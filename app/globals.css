@@ -1,26 +1,359 @@
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Basic reset-ish */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'Roboto', sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+/* App shell */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at top left, #1f2933 0, transparent 50%),
+    radial-gradient(circle at bottom right, #111827 0, #020617 55%);
+  color: #e5e7eb;
+}
+
+.app-header {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 1rem 1.25rem 0.5rem;
+}
+
+.app-header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-logo-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #a855f7, #ec4899);
+  box-shadow: 0 0 18px rgba(236, 72, 153, 0.6);
+}
+
+.app-brand-text {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  font-size: 0.95rem;
+}
+
+.app-tagline {
+  margin: 0.4rem 0 0.6rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.app-main {
+  flex: 1;
+  padding: 1.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.app-footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  padding: 0.75rem 1.25rem 1.25rem;
+  font-size: 0.7rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Layout common */
+
+.page-container {
+  width: 100%;
+  max-width: 960px;
+}
+
+/* Generic UI elements */
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  margin-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.section-subtitle {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* Cards */
+
+.card {
+  border-radius: 14px;
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.7);
+  padding: 0.9rem 1rem;
+}
+
+.card--soft {
+  border-radius: 12px;
+  border: 1px solid rgba(31, 41, 55, 0.75);
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.55);
+}
+
+/* Inputs */
+
+.input {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  background: rgba(15, 23, 42, 0.92);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  color: #e5e7eb;
+  outline: none;
+}
+
+.input::placeholder {
+  color: #6b7280;
+}
+
+.input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.5);
+}
+
+/* Textarea */
+
+.textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  background: rgba(15, 23, 42, 0.92);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: #e5e7eb;
+  outline: none;
+  resize: vertical;
+}
+
+.textarea::placeholder {
+  color: #6b7280;
+}
+
+.textarea:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.5);
+}
+
+/* Buttons */
+
+.btn {
+  border-radius: 999px;
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(15, 23, 42, 0.95);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0f172a, #111827);
+  border-color: rgba(107, 114, 128, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.6);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  border-color: transparent;
+  color: #f9fafb;
+}
+
+.btn--primary:hover:not(:disabled) {
+  box-shadow: 0 12px 25px rgba(236, 72, 153, 0.6);
+}
+
+.btn--ghost {
+  background: transparent;
+}
+
+/* Chips */
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  font-size: 0.7rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(75, 85, 99, 0.95);
+  background: rgba(15, 23, 42, 0.85);
+  color: #9ca3af;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.chip--active {
+  border-color: rgba(248, 250, 252, 1);
+  color: #f9fafb;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+  transform: translateY(-1px);
+}
+
+/* Venue list */
+
+.venue-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.venue-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.venue-card-main {
+  min-width: 0;
+}
+
+.venue-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.venue-city {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.venue-score {
+  text-align: right;
+  font-size: 0.7rem;
+}
+
+.venue-score-main {
+  font-weight: 600;
+}
+
+.venue-score-sub {
+  color: #9ca3af;
+  margin-top: 0.15rem;
+}
+
+/* Venue page */
+
+.venue-header-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.venue-header-meta {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.venue-header-address {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.15rem;
+}
+
+.venue-header-score {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #d1d5db;
+}
+
+/* Review list */
+
+.review-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.review-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+
+.review-author {
+  font-weight: 500;
+}
+
+.review-score {
+  font-weight: 600;
+}
+
+.review-body {
+  font-size: 0.8rem;
+  color: #d1d5db;
+}
+
+.review-date {
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  color: #6b7280;
+}
+
+/* Back link */
+
+.back-link {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
 }

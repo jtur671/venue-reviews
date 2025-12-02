@@ -19,8 +19,6 @@ export default function HomePage() {
   const [venues, setVenues] = useState<VenueWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-
-  // city filter
   const [selectedCity, setSelectedCity] = useState<string>('All');
 
   // add-venue form state
@@ -74,16 +72,12 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // unique cities from venues
   const cities = useMemo(() => {
     const set = new Set<string>();
-    venues.forEach((v) => {
-      if (v.city) set.add(v.city);
-    });
+    venues.forEach((v) => v.city && set.add(v.city));
     return Array.from(set).sort();
   }, [venues]);
 
-  // Filter venues by city + search text (name or city)
   const filteredVenues = useMemo(() => {
     let list = venues;
 
@@ -128,180 +122,195 @@ export default function HomePage() {
       return;
     }
 
-    // clear form
     setNewName('');
     setNewCity('');
     setNewCountry('USA');
     setNewAddress('');
 
-    // reload list (this will also update available cities)
     await loadVenues();
     setAdding(false);
   }
 
   return (
-    <main className="mx-auto max-w-xl p-4 space-y-4">
-      <header>
-        <h1 className="text-2xl font-semibold mb-1">Venues</h1>
-        <p className="text-xs text-neutral-500">
-          Search, filter by city, and add live music venues to rate.
-        </p>
-      </header>
-
-      {/* City filter chips */}
-      {cities.length > 0 && (
-        <div className="flex flex-wrap gap-2 text-xs">
-          <button
-            type="button"
-            onClick={() => setSelectedCity('All')}
-            className={`rounded-full border px-3 py-1 ${
-              selectedCity === 'All'
-                ? 'border-neutral-100 text-neutral-100'
-                : 'border-neutral-700 text-neutral-400'
-            }`}
-          >
-            All
-          </button>
-          {cities.map((city) => (
-            <button
-              key={city}
-              type="button"
-              onClick={() => setSelectedCity(city)}
-              className={`rounded-full border px-3 py-1 ${
-                selectedCity === city
-                  ? 'border-neutral-100 text-neutral-100'
-                  : 'border-neutral-700 text-neutral-400'
-              }`}
-            >
-              {city}
-            </button>
-          ))}
+    <div className="page-container">
+      {/* Intro */}
+      <section className="section">
+        <div className="section-header">
+          <h1 className="section-title">Find your next favorite room.</h1>
+          <p className="section-subtitle">
+            Not all venues are built the same. See where the sound, vibe, and
+            crowd actually deliver.
+          </p>
         </div>
-      )}
+      </section>
 
-      {/* Search bar */}
-      <div>
+      {/* City chips + search */}
+      <section className="section card--soft" style={{ padding: '0.85rem 1rem' }}>
+        <div className="section-header" style={{ marginBottom: '0.6rem' }}>
+          <p className="section-subtitle">Filter</p>
+        </div>
+
+        {cities.length > 0 && (
+          <div className="chip-row" style={{ marginBottom: '0.65rem' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedCity('All')}
+              className={'chip ' + (selectedCity === 'All' ? 'chip--active' : '')}
+            >
+              All cities
+            </button>
+            {cities.map((city) => (
+              <button
+                key={city}
+                type="button"
+                onClick={() => setSelectedCity(city)}
+                className={'chip ' + (selectedCity === city ? 'chip--active' : '')}
+              >
+                {city}
+              </button>
+            ))}
+          </div>
+        )}
+
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search e.g. Bowery, Tampa, Austin..."
-          className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-2 text-sm"
+          placeholder="Search by venue or city…"
+          className="input"
         />
-      </div>
+      </section>
 
-      {/* Add venue form */}
-      <section className="rounded-md border border-neutral-800 p-3 space-y-2">
-        <h2 className="text-sm font-semibold text-neutral-200">
-          Add a venue
-        </h2>
-        <form onSubmit={handleAddVenue} className="space-y-2">
-          <div>
-            <label className="block text-xs mb-1">Name*</label>
+      {/* Add venue */}
+      <section className="section card">
+        <div className="section-header">
+          <h2 className="section-title">Add a venue</h2>
+          <p className="section-subtitle">
+            Know a great room that&apos;s missing? Add it so you and your crew
+            can rate it.
+          </p>
+        </div>
+
+        <form onSubmit={handleAddVenue} className="section" style={{ marginBottom: 0 }}>
+          <div style={{ marginBottom: '0.6rem' }}>
+            <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
+              Name*
+            </label>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Bad Bird Bar"
-              className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm"
+              className="input"
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1.1fr 0.9fr',
+              gap: '0.5rem',
+              marginBottom: '0.6rem',
+            }}
+          >
             <div>
-              <label className="block text-xs mb-1">City*</label>
+              <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
+                City*
+              </label>
               <input
                 type="text"
                 value={newCity}
                 onChange={(e) => setNewCity(e.target.value)}
                 placeholder="Miami"
-                className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm"
+                className="input"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs mb-1">Country</label>
+              <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
+                Country
+              </label>
               <input
                 type="text"
                 value={newCountry}
                 onChange={(e) => setNewCountry(e.target.value)}
-                className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm"
+                className="input"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs mb-1">Address (optional)</label>
+          <div style={{ marginBottom: '0.6rem' }}>
+            <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
+              Address (optional)
+            </label>
             <input
               type="text"
               value={newAddress}
               onChange={(e) => setNewAddress(e.target.value)}
               placeholder="123 Main St"
-              className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm"
+              className="input"
             />
           </div>
 
           {addError && (
-            <p className="text-xs text-red-400">{addError}</p>
+            <p style={{ fontSize: '0.75rem', color: '#f97373', marginBottom: '0.4rem' }}>
+              {addError}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={adding}
-            className="w-full rounded-md border border-neutral-700 px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="btn btn--primary"
+            style={{ width: '100%' }}
           >
             {adding ? 'Adding…' : 'Add venue'}
           </button>
         </form>
       </section>
 
-      {/* Venues list */}
-      {loading && (
-        <p className="text-sm text-neutral-500">Loading venues…</p>
-      )}
+      {/* Venue list */}
+      <section className="section">
+        {loading && <p className="section-subtitle">Loading venues…</p>}
 
-      {!loading && filteredVenues.length === 0 && (
-        <p className="text-sm text-neutral-500">
-          No venues match your filters.
-        </p>
-      )}
+        {!loading && filteredVenues.length === 0 && (
+          <p className="section-subtitle">
+            No venues match your filters yet. Try a different search or add one
+            above.
+          </p>
+        )}
 
-      {!loading && filteredVenues.length > 0 && (
-        <ul className="space-y-2">
-          {filteredVenues.map((v) => (
-            <li key={v.id}>
-              <Link
-                href={`/venues/${v.id}`}
-                className="flex items-center justify-between rounded-md border border-neutral-800 p-2"
-              >
-                <div>
-                  <div className="text-sm font-medium">{v.name}</div>
-                  <div className="text-xs text-neutral-500">{v.city}</div>
-                </div>
-
-                <div className="text-right text-xs">
-                  {v.avgScore !== null ? (
-                    <>
-                      <div className="font-semibold">
-                        {v.avgScore.toFixed(1)}/10
-                      </div>
-                      <div className="text-neutral-500">
-                        {v.reviewCount} review
-                        {v.reviewCount === 1 ? '' : 's'}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-neutral-500 text-[11px]">
-                      No ratings yet
-                    </div>
-                  )}
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+        {!loading && filteredVenues.length > 0 && (
+          <ul className="venue-list">
+            {filteredVenues.map((v) => (
+              <li key={v.id} style={{ marginBottom: '0.6rem' }}>
+                <Link href={`/venues/${v.id}`} className="card venue-card">
+                  <div className="venue-card-main">
+                    <div className="venue-name">{v.name}</div>
+                    <div className="venue-city">{v.city}</div>
+                  </div>
+                  <div className="venue-score">
+                    {v.avgScore !== null ? (
+                      <>
+                        <div className="venue-score-main">
+                          {v.avgScore.toFixed(1)}/10
+                        </div>
+                        <div className="venue-score-sub">
+                          {v.reviewCount} review
+                          {v.reviewCount === 1 ? '' : 's'}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="venue-score-sub">No ratings yet</div>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }

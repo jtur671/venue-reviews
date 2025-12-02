@@ -27,21 +27,19 @@ export default function VenuePage() {
 
   const [venue, setVenue] = useState<Venue | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  // derived value: average score
+  const [loading, setLoading] = useState(true);
+
   const avgScore =
     reviews.length > 0
       ? reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length
       : null;
-  const [loading, setLoading] = useState(true);
 
-  // form state
   const [name, setName] = useState('');
   const [score, setScore] = useState('');
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // helper to load reviews (we call this after submit too)
   async function fetchReviews() {
     if (!venueId) return;
 
@@ -62,7 +60,6 @@ export default function VenuePage() {
     if (!venueId) return;
 
     async function loadVenueAndReviews() {
-      // 1) load venue
       const { data: venueData, error: venueError } = await supabase
         .from('venues')
         .select('id, name, city, country, address')
@@ -75,9 +72,7 @@ export default function VenuePage() {
         setVenue(venueData as Venue);
       }
 
-      // 2) load reviews
       await fetchReviews();
-
       setLoading(false);
     }
 
@@ -116,70 +111,74 @@ export default function VenuePage() {
       return;
     }
 
-    // clear form
     setName('');
     setScore('');
     setComment('');
 
-    // reload reviews
     await fetchReviews();
-
     setSubmitting(false);
   }
 
   return (
-    <main className="mx-auto max-w-xl p-4 space-y-3">
-      <Link
-        href="/"
-        className="text-xs text-neutral-400 hover:underline"
-      >
-        ← Back to venues
-      </Link>
+    <div className="page-container">
+      <section className="section">
+        <Link href="/" className="back-link">
+          ← Back to venues
+        </Link>
+      </section>
 
       {loading && (
-        <p className="text-sm text-neutral-500">Loading venue…</p>
+        <section className="section">
+          <p className="section-subtitle">Loading venue…</p>
+        </section>
       )}
 
       {!loading && !venue && (
-        <p className="text-sm text-neutral-500">Venue not found.</p>
+        <section className="section">
+          <p className="section-subtitle">Venue not found.</p>
+        </section>
       )}
 
       {venue && (
         <>
-          <header className="space-y-1">
-            <h1 className="text-2xl font-semibold">{venue.name}</h1>
-            <p className="text-sm text-neutral-400">
-              {venue.city}, {venue.country}
-            </p>
-            {venue.address && (
-              <p className="text-xs text-neutral-500">{venue.address}</p>
-            )}
-
-            <div className="mt-2 text-xs text-neutral-300">
-              {avgScore !== null ? (
-                <span>
-                  Average score:{' '}
-                  <span className="font-semibold">
-                    {avgScore.toFixed(1)}/10
-                  </span>{' '}
-                  ({reviews.length} review
-                  {reviews.length === 1 ? '' : 's'})
-                </span>
-              ) : (
-                <span>No ratings yet.</span>
+          <section className="section card">
+            <div className="section-header">
+              <h1 className="venue-header-name">{venue.name}</h1>
+              <p className="venue-header-meta">
+                {venue.city}, {venue.country}
+              </p>
+              {venue.address && (
+                <p className="venue-header-address">{venue.address}</p>
               )}
+              <div className="venue-header-score">
+                {avgScore !== null ? (
+                  <>
+                    Average score <strong>{avgScore.toFixed(1)}/10</strong> ·{' '}
+                    {reviews.length} review
+                    {reviews.length === 1 ? '' : 's'}
+                  </>
+                ) : (
+                  <>No ratings yet.</>
+                )}
+              </div>
             </div>
-          </header>
+          </section>
 
-          {/* Add review form */}
-          <section className="mt-4 space-y-2">
-            <h2 className="text-sm font-semibold text-neutral-200">
-              Add a review
-            </h2>
+          <section className="section card--soft" style={{ padding: '0.9rem 1rem' }}>
+            <div className="section-header">
+              <h2 className="section-title">Add a review</h2>
+              <p className="section-subtitle">
+                Be honest but fair. Focus on sound, vibe, staff, and how it felt
+                to be in the room.
+              </p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-2">
-              <div>
-                <label className="block text-xs mb-1">
+            <form onSubmit={handleSubmit} className="section" style={{ marginBottom: 0 }}>
+              <div style={{ marginBottom: '0.6rem' }}>
+                <label
+                  className="section-subtitle"
+                  style={{ display: 'block', marginBottom: '0.25rem' }}
+                >
                   Your name (optional)
                 </label>
                 <input
@@ -187,12 +186,15 @@ export default function VenuePage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Alex"
-                  className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm"
+                  className="input"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs mb-1">
+              <div style={{ marginBottom: '0.6rem' }}>
+                <label
+                  className="section-subtitle"
+                  style={{ display: 'block', marginBottom: '0.25rem' }}
+                >
                   Score (1–10)
                 </label>
                 <input
@@ -202,70 +204,67 @@ export default function VenuePage() {
                   value={score}
                   onChange={(e) => setScore(e.target.value)}
                   required
-                  className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm"
+                  className="input"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs mb-1">
+              <div style={{ marginBottom: '0.6rem' }}>
+                <label
+                  className="section-subtitle"
+                  style={{ display: 'block', marginBottom: '0.25rem' }}
+                >
                   Comment (optional)
                 </label>
                 <textarea
                   rows={3}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="How was the sound, vibe, staff, drinks?"
-                  className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm"
+                  placeholder="How was the sound, vibe, crowd, and staff?"
+                  className="textarea"
                 />
               </div>
 
               {formError && (
-                <p className="text-xs text-red-400">{formError}</p>
+                <p style={{ fontSize: '0.75rem', color: '#f97373', marginBottom: '0.4rem' }}>
+                  {formError}
+                </p>
               )}
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-md border border-neutral-700 px-3 py-2 text-sm font-medium disabled:opacity-50"
+                className="btn btn--primary"
+                style={{ width: '100%' }}
               >
                 {submitting ? 'Saving…' : 'Submit review'}
               </button>
             </form>
           </section>
 
-          {/* Existing reviews */}
-          <section className="mt-6 space-y-2">
-            <h2 className="text-sm font-semibold text-neutral-200">
-              Reviews
-            </h2>
+          <section className="section card">
+            <div className="section-header">
+              <h2 className="section-title">Reviews</h2>
+            </div>
 
             {reviews.length === 0 && (
-              <p className="text-xs text-neutral-500">
-                No reviews yet for this venue.
+              <p className="section-subtitle">
+                No reviews yet. Be the first to share how this venue actually
+                feels live.
               </p>
             )}
 
             {reviews.length > 0 && (
-              <ul className="space-y-2">
+              <ul className="review-list">
                 {reviews.map((r) => (
-                  <li
-                    key={r.id}
-                    className="rounded-md border border-neutral-800 p-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold">
+                  <li key={r.id} style={{ marginBottom: '0.65rem' }}>
+                    <div className="review-meta-row">
+                      <span className="review-author">
                         {r.reviewer_name || 'Anonymous'}
                       </span>
-                      <span className="text-xs font-semibold">
-                        {r.score}/10
-                      </span>
+                      <span className="review-score">{r.score}/10</span>
                     </div>
-                    {r.comment && (
-                      <p className="mt-1 text-xs text-neutral-400">
-                        {r.comment}
-                      </p>
-                    )}
-                    <p className="mt-1 text-[10px] text-neutral-500">
+                    {r.comment && <p className="review-body">{r.comment}</p>}
+                    <p className="review-date">
                       {new Date(r.created_at).toLocaleString()}
                     </p>
                   </li>
@@ -275,6 +274,6 @@ export default function VenuePage() {
           </section>
         </>
       )}
-    </main>
+    </div>
   );
 }
