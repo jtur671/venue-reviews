@@ -78,4 +78,46 @@ describe('Supabase connection', () => {
 
     expect(deleteError).toBeNull();
   });
+
+  it('can insert and clean up a venue', async () => {
+    const uniqueName = `Vitest Venue ${Date.now()}`;
+    const city = 'Test City';
+
+    const { data: insertData, error: insertError } = await supabase
+      .from('venues')
+      .insert({
+        name: uniqueName,
+        city,
+        country: 'Testland',
+        address: '123 Test St',
+      })
+      .select('id')
+      .single();
+
+    expect(insertError).toBeNull();
+    expect(insertData?.id).toBeTruthy();
+
+    if (!insertData?.id) {
+      throw new Error('Supabase did not return the inserted venue id');
+    }
+
+    const insertedId = insertData.id;
+
+    const { data: fetchedData, error: fetchError } = await supabase
+      .from('venues')
+      .select('id, name, city')
+      .eq('id', insertedId)
+      .single();
+
+    expect(fetchError).toBeNull();
+    expect(fetchedData?.name).toBe(uniqueName);
+    expect(fetchedData?.city).toBe(city);
+
+    const { error: deleteError } = await supabase
+      .from('venues')
+      .delete()
+      .eq('id', insertedId);
+
+    expect(deleteError).toBeNull();
+  });
 });
