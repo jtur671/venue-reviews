@@ -1,19 +1,19 @@
 'use client';
 
-import { useEffect, useState, useMemo, FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import Link from 'next/link';
+import { VenueFilters } from '@/components/VenueFilters';
+import { AddVenueForm } from '@/components/AddVenueForm';
+import {
+  VenueList,
+  VenueWithStats as VenueListItem,
+} from '@/components/VenueList';
+import {
+  RemoteSearchResults,
+  RemoteVenue,
+} from '@/components/RemoteSearchResults';
 
-type Venue = {
-  id: string;
-  name: string;
-  city: string;
-};
-
-type VenueWithStats = Venue & {
-  avgScore: number | null;
-  reviewCount: number;
-};
+type VenueWithStats = VenueListItem;
 
 export default function HomePage() {
   const [venues, setVenues] = useState<VenueWithStats[]>([]);
@@ -21,15 +21,11 @@ export default function HomePage() {
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState<string>('All');
 
-  // add-venue form state
-  const [newName, setNewName] = useState('');
-  const [newCity, setNewCity] = useState('');
-  const [newCountry, setNewCountry] = useState('USA');
-  const [newAddress, setNewAddress] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [remoteResults, setRemoteResults] = useState<RemoteVenue[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
 
-  async function loadVenues() {
+  const loadVenues = useCallback(async () => {
     setLoading(true);
 
     const { data, error } = await supabase
@@ -65,18 +61,49 @@ export default function HomePage() {
 
     setVenues(withStats);
     setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
     loadVenues();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadVenues]);
 
-  const cities = useMemo(() => {
-    const set = new Set<string>();
-    venues.forEach((v) => v.city && set.add(v.city));
-    return Array.from(set).sort();
+  const popularCities = useMemo(() => {
+    const map = new Map<string, { venueCount: number; reviewCount: number }>();
+
+    venues.forEach((v) => {
+      if (!v.city) return;
+      const current = map.get(v.city) || { venueCount: 0, reviewCount: 0 };
+      current.venueCount += 1;
+      current.reviewCount += v.reviewCount;
+      map.set(v.city, current);
+    });
+
+    return Array.from(map.entries())
+      .sort((a, b) => {
+        if (b[1].reviewCount !== a[1].reviewCount) {
+          return b[1].reviewCount - a[1].reviewCount;
+        }
+        return b[1].venueCount - a[1].venueCount;
+      })
+      .slice(0, 6)
+      .map(([city]) => city);
   }, [venues]);
+
+  const exampleVenue = useMemo(() => {
+    if (!venues.length) return null;
+    const sorted = [...venues].sort((a, b) => {
+      if (b.reviewCount !== a.reviewCount) {
+        return b.reviewCount - a.reviewCount;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    return sorted[0];
+  }, [venues]);
+
+  const exampleCities = useMemo(
+    () => popularCities.slice(0, 3),
+    [popularCities]
+  );
 
   const filteredVenues = useMemo(() => {
     let list = venues;
@@ -97,220 +124,157 @@ export default function HomePage() {
     return list;
   }, [search, venues, selectedCity]);
 
-  async function handleAddVenue(e: FormEvent) {
-    e.preventDefault();
-    setAddError(null);
+  const hasQuery = search.trim().length > 0 || selectedCity !== 'All';
 
-    if (!newName.trim() || !newCity.trim()) {
-      setAddError('Name and city are required.');
+  const resultLabel = useMemo(() => {
+    if (!hasQuery) return undefined;
+
+    if (selectedCity !== 'All' && search.trim()) {
+      return `in ${selectedCity} matching "${search.trim()}"`;
+    }
+
+    if (selectedCity !== 'All') {
+      return `in ${selectedCity}`;
+    }
+
+    if (search.trim()) {
+      return `matching "${search.trim()}"`;
+    }
+
+    return undefined;
+  }, [hasQuery, selectedCity, search]);
+
+  const communityLabel = useMemo(() => {
+    if (!hasQuery) return undefined;
+    if (resultLabel) return `${resultLabel} (community ratings)`;
+    return 'community ratings';
+  }, [hasQuery, resultLabel]);
+
+  useEffect(() => {
+    if (!hasQuery) {
+      setRemoteResults([]);
+      setRemoteError(null);
+      setRemoteLoading(false);
       return;
     }
 
-    setAdding(true);
+    const q = search.trim();
+    const city = selectedCity !== 'All' ? selectedCity : '';
 
-    const { error } = await supabase.from('venues').insert({
-      name: newName.trim(),
-      city: newCity.trim(),
-      country: newCountry.trim() || 'USA',
-      address: newAddress.trim() || null,
-    });
+    const timeout = setTimeout(async () => {
+      if (!q && !city) return;
 
-    if (error) {
-      console.error('Error adding venue:', error);
-      setAddError('Could not add venue. Please try again.');
-      setAdding(false);
-      return;
-    }
+      setRemoteLoading(true);
+      setRemoteError(null);
 
-    setNewName('');
-    setNewCity('');
-    setNewCountry('USA');
-    setNewAddress('');
+      try {
+        const params = new URLSearchParams();
+        if (q) params.set('q', q);
+        if (city) params.set('city', city);
 
-    await loadVenues();
-    setAdding(false);
+        const res = await fetch(`/api/search-venues?${params.toString()}`);
+        if (!res.ok) {
+          const text = await res.text();
+          console.error('Search API error:', res.status, text);
+          setRemoteError('There was a problem searching venues.');
+          setRemoteResults([]);
+        } else {
+          const json = await res.json();
+          setRemoteResults(json.results || []);
+        }
+      } catch (err) {
+        console.error('Search request failed:', err);
+        setRemoteError('There was a problem searching venues.');
+        setRemoteResults([]);
+      } finally {
+        setRemoteLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [hasQuery, search, selectedCity]);
+
+  function handleExampleVenue(name: string) {
+    setSelectedCity('All');
+    setSearch(name);
+  }
+
+  function handleExampleCity(city: string) {
+    setSearch('');
+    setSelectedCity(city);
   }
 
   return (
     <div className="page-container">
-      {/* Intro */}
       <section className="section">
         <div className="section-header">
-          <h1 className="section-title">Find your next favorite room.</h1>
+          <h1 className="section-title">Search live venues by experience.</h1>
           <p className="section-subtitle">
-            Not all venues are built the same. See where the sound, vibe, and
-            crowd actually deliver.
+            Start typing a venue or pick a popular city to see how the room actually feels for artists and fans.
           </p>
         </div>
       </section>
 
-      {/* City chips + search */}
-      <section className="section card--soft" style={{ padding: '0.85rem 1rem' }}>
-        <div className="section-header" style={{ marginBottom: '0.6rem' }}>
-          <p className="section-subtitle">Filter</p>
-        </div>
+      <VenueFilters
+        cities={popularCities}
+        selectedCity={selectedCity}
+        onCityChange={setSelectedCity}
+        search={search}
+        onSearchChange={setSearch}
+      />
 
-        {cities.length > 0 && (
-          <div className="chip-row" style={{ marginBottom: '0.65rem' }}>
-            <button
-              type="button"
-              onClick={() => setSelectedCity('All')}
-              className={'chip ' + (selectedCity === 'All' ? 'chip--active' : '')}
-            >
-              All cities
-            </button>
-            {cities.map((city) => (
+      {(exampleVenue || exampleCities.length > 0) && (
+        <section className="section" style={{ marginTop: '-0.5rem' }}>
+          <p className="section-subtitle" style={{ marginBottom: '0.35rem' }}>
+            Try:
+          </p>
+          <div className="chip-row">
+            {exampleVenue && (
+              <button
+                type="button"
+                className="chip"
+                onClick={() => handleExampleVenue(exampleVenue.name)}
+              >
+                {exampleVenue.name}
+                {exampleVenue.city ? ` · ${exampleVenue.city}` : ''}
+              </button>
+            )}
+            {exampleCities.map((city) => (
               <button
                 key={city}
                 type="button"
-                onClick={() => setSelectedCity(city)}
-                className={'chip ' + (selectedCity === city ? 'chip--active' : '')}
+                className="chip"
+                onClick={() => handleExampleCity(city)}
               >
                 {city}
               </button>
             ))}
           </div>
-        )}
+        </section>
+      )}
 
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by venue or city…"
-          className="input"
+      <AddVenueForm onAdded={loadVenues} />
+
+      <RemoteSearchResults
+        results={remoteResults}
+        loading={remoteLoading}
+        error={remoteError}
+        hasQuery={hasQuery}
+      />
+
+      {hasQuery ? (
+        <VenueList
+          venues={filteredVenues}
+          loading={loading}
+          label={communityLabel}
         />
-      </section>
-
-      {/* Add venue */}
-      <section className="section card">
-        <div className="section-header">
-          <h2 className="section-title">Add a venue</h2>
+      ) : (
+        <section className="section">
           <p className="section-subtitle">
-            Know a great room that&apos;s missing? Add it so you and your crew
-            can rate it.
+            No results yet. Search for a venue or choose a popular city above to see ratings.
           </p>
-        </div>
-
-        <form onSubmit={handleAddVenue} className="section" style={{ marginBottom: 0 }}>
-          <div style={{ marginBottom: '0.6rem' }}>
-            <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
-              Name*
-            </label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Bad Bird Bar"
-              className="input"
-              required
-            />
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1.1fr 0.9fr',
-              gap: '0.5rem',
-              marginBottom: '0.6rem',
-            }}
-          >
-            <div>
-              <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
-                City*
-              </label>
-              <input
-                type="text"
-                value={newCity}
-                onChange={(e) => setNewCity(e.target.value)}
-                placeholder="Miami"
-                className="input"
-                required
-              />
-            </div>
-            <div>
-              <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
-                Country
-              </label>
-              <input
-                type="text"
-                value={newCountry}
-                onChange={(e) => setNewCountry(e.target.value)}
-                className="input"
-              />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '0.6rem' }}>
-            <label className="section-subtitle" style={{ display: 'block', marginBottom: '0.25rem' }}>
-              Address (optional)
-            </label>
-            <input
-              type="text"
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-              placeholder="123 Main St"
-              className="input"
-            />
-          </div>
-
-          {addError && (
-            <p style={{ fontSize: '0.75rem', color: '#f97373', marginBottom: '0.4rem' }}>
-              {addError}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={adding}
-            className="btn btn--primary"
-            style={{ width: '100%' }}
-          >
-            {adding ? 'Adding…' : 'Add venue'}
-          </button>
-        </form>
-      </section>
-
-      {/* Venue list */}
-      <section className="section">
-        {loading && <p className="section-subtitle">Loading venues…</p>}
-
-        {!loading && filteredVenues.length === 0 && (
-          <p className="section-subtitle">
-            No venues match your filters yet. Try a different search or add one
-            above.
-          </p>
-        )}
-
-        {!loading && filteredVenues.length > 0 && (
-          <ul className="venue-list">
-            {filteredVenues.map((v) => (
-              <li key={v.id} style={{ marginBottom: '0.6rem' }}>
-                <Link href={`/venues/${v.id}`} className="card venue-card">
-                  <div className="venue-card-main">
-                    <div className="venue-name">{v.name}</div>
-                    <div className="venue-city">{v.city}</div>
-                  </div>
-                  <div className="venue-score">
-                    {v.avgScore !== null ? (
-                      <>
-                        <div className="venue-score-main">
-                          {v.avgScore.toFixed(1)}/10
-                        </div>
-                        <div className="venue-score-sub">
-                          {v.reviewCount} review
-                          {v.reviewCount === 1 ? '' : 's'}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="venue-score-sub">No ratings yet</div>
-                    )}
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        </section>
+      )}
     </div>
   );
 }
