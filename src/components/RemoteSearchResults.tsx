@@ -11,6 +11,7 @@ type RemoteSearchResultsProps = {
   loading: boolean;
   error?: string | null;
   hasQuery: boolean;
+  onSelectVenue: (venue: RemoteVenue) => void;
 };
 
 export function RemoteSearchResults({
@@ -18,6 +19,7 @@ export function RemoteSearchResults({
   loading,
   error,
   hasQuery,
+  onSelectVenue,
 }: RemoteSearchResultsProps) {
   if (!hasQuery) return null;
 
@@ -63,8 +65,18 @@ export function RemoteSearchResults({
                     </div>
                   )}
                 </div>
-                <div className="venue-score">
-                  <div className="venue-score-sub">No report card yet</div>
+                <div className="venue-score" style={{ textAlign: 'right' }}>
+                  <div className="venue-score-sub" style={{ marginBottom: '0.25rem' }}>
+                    No report card yet
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => onSelectVenue(v)}
+                    style={{ fontSize: '0.75rem', paddingInline: '0.75rem' }}
+                  >
+                    Create report card
+                  </button>
                 </div>
               </div>
             </li>

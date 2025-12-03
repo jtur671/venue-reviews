@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { VenueFilters } from '@/components/VenueFilters';
-import { AddVenueForm } from '@/components/AddVenueForm';
+import { AddVenueForm, DraftVenue } from '@/components/AddVenueForm';
 import {
   VenueList,
   VenueWithStats as VenueListItem,
@@ -24,6 +24,7 @@ export default function HomePage() {
   const [remoteResults, setRemoteResults] = useState<RemoteVenue[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
+  const [draftVenue, setDraftVenue] = useState<DraftVenue>(null);
 
   const loadVenues = useCallback(async () => {
     setLoading(true);
@@ -204,6 +205,15 @@ export default function HomePage() {
     setSelectedCity(city);
   }
 
+  function handleSelectRemoteVenue(v: RemoteVenue) {
+    setDraftVenue({
+      name: v.name,
+      city: v.city,
+      country: v.country,
+      address: v.address,
+    });
+  }
+
   return (
     <div className="page-container">
       <section className="section">
@@ -253,13 +263,14 @@ export default function HomePage() {
         </section>
       )}
 
-      <AddVenueForm onAdded={loadVenues} />
+      <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
 
       <RemoteSearchResults
         results={remoteResults}
         loading={remoteLoading}
         error={remoteError}
         hasQuery={hasQuery}
+        onSelectVenue={handleSelectRemoteVenue}
       />
 
       {hasQuery ? (

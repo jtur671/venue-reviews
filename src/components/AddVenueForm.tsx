@@ -1,13 +1,21 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+
+export type DraftVenue = {
+  name?: string;
+  city?: string;
+  country?: string;
+  address?: string;
+} | null;
 
 type AddVenueFormProps = {
   onAdded: () => void;
+  draftVenue?: DraftVenue;
 };
 
-export function AddVenueForm({ onAdded }: AddVenueFormProps) {
+export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
   const [newName, setNewName] = useState('');
   const [newCity, setNewCity] = useState('');
   const [newCountry, setNewCountry] = useState('USA');
@@ -15,6 +23,16 @@ export function AddVenueForm({ onAdded }: AddVenueFormProps) {
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  useEffect(() => {
+    if (!draftVenue) return;
+
+    setNewName(draftVenue.name ?? '');
+    setNewCity(draftVenue.city ?? '');
+    setNewCountry(draftVenue.country ?? 'USA');
+    setNewAddress(draftVenue.address ?? '');
+    setShowAddForm(true);
+  }, [draftVenue]);
 
   async function handleAddVenue(e: FormEvent) {
     e.preventDefault();
