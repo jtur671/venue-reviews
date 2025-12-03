@@ -8,6 +8,7 @@ import { StarRating } from '@/components/StarRating';
 import { ReviewList } from '@/components/ReviewList';
 import { ReviewForm } from '@/components/ReviewForm';
 import { Review } from '@/types/venues';
+import { useAnonUser } from '@/hooks/useAnonUser';
 
 type Venue = {
   id: string;
@@ -26,6 +27,7 @@ export default function VenuePage() {
   const [venue, setVenue] = useState<Venue | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, loading: userLoading } = useAnonUser();
 
   const avgScore = useMemo(() => {
     if (!reviews.length) return null;
@@ -51,7 +53,7 @@ export default function VenuePage() {
   }, [reviews]);
 
   const loadVenue = useCallback(async () => {
-    if (!venueId) return;
+    if (!venueId || userLoading || !user) return;
 
     const { data, error } = await supabase
       .from('venues')
@@ -65,10 +67,10 @@ export default function VenuePage() {
     } else {
       setVenue(data as Venue);
     }
-  }, [venueId]);
+  }, [venueId, userLoading, user]);
 
   const loadReviews = useCallback(async () => {
-    if (!venueId) return;
+    if (!venueId || userLoading || !user) return;
 
     const { data, error } = await supabase
       .from('reviews')
@@ -84,17 +86,18 @@ export default function VenuePage() {
     } else {
       setReviews((data || []) as Review[]);
     }
-  }, [venueId]);
+  }, [venueId, userLoading, user]);
 
   useEffect(() => {
     async function loadAll() {
+      if (userLoading || !user) return;
       setLoading(true);
       await Promise.all([loadVenue(), loadReviews()]);
       setLoading(false);
     }
 
     loadAll();
-  }, [loadVenue, loadReviews]);
+  }, [loadVenue, loadReviews, userLoading, user]);
 
   return (
     <div className="page-container">

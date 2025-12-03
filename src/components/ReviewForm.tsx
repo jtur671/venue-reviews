@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useAnonUser } from '@/hooks/useAnonUser';
 
 type ReviewFormProps = {
   venueId: string;
@@ -18,6 +19,7 @@ const ASPECTS: { key: AspectKey; label: string }[] = [
 ];
 
 export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
+  const { user, loading: userLoading } = useAnonUser();
   const [reviewer, setReviewer] = useState('');
   const [comment, setComment] = useState('');
   const [aspects, setAspects] = useState<Record<AspectKey, number>>({
@@ -44,11 +46,18 @@ export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!user) {
+      setError('Unable to start a session. Please try again.');
+      return;
+    }
+
     setSubmitting(true);
 
     const { error } = await supabase.from('reviews').insert({
       venue_id: venueId,
-      reviewer: reviewer.trim() || null,
+      user_id: user.id,
+      reviewer_name: reviewer.trim() || null,
       comment: comment.trim() || null,
       score: overallScore,
       sound_score: aspects.sound_score,
@@ -58,8 +67,12 @@ export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
     });
 
     if (error) {
-      console.error('Error adding review:', error);
-      setError('Could not save your review. Please try again.');
+      if ((error as any).code === '23505') {
+        setError('You’ve already left a report card for this venue from this browser.');
+      } else {
+        console.error('Error adding review:', error);
+        setError('Could not save your review. Please try again.');
+      }
       setSubmitting(false);
       return;
     }
@@ -75,6 +88,8 @@ export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
     setSubmitting(false);
     onSubmitted();
   }
+
+  const isDisabled = submitting || userLoading;
 
   return (
     <form onSubmit={handleSubmit} className="section card">
@@ -171,11 +186,15 @@ export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={isDisabled}
         className="btn btn--primary"
         style={{ width: '100%' }}
       >
-        {submitting ? 'Submitting…' : 'Submit review'}
+        {userLoading
+          ? 'Preparing form…'
+          : submitting
+            ? 'Submitting…'
+            : 'Submit review'}
       </button>
     </form>
   );

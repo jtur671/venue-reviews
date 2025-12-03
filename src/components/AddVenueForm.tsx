@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useRef, useState, FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { DraftVenue } from '@/types/venues';
 
@@ -17,6 +17,7 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!draftVenue) return;
@@ -26,6 +27,7 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
     setNewCountry(draftVenue.country ?? 'USA');
     setNewAddress(draftVenue.address ?? '');
     setShowAddForm(true);
+    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [draftVenue]);
 
   async function handleAddVenue(e: FormEvent) {
@@ -63,7 +65,7 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
   }
 
   return (
-    <section className="section" style={{ marginTop: '1.5rem' }}>
+    <section ref={containerRef} className="section" style={{ marginTop: '1.5rem' }}>
       {!showAddForm && (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button

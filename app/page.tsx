@@ -9,6 +9,7 @@ import { RemoteSearchResults } from '@/components/RemoteSearchResults';
 import { mapSupabaseVenues } from '@/lib/mapSupabaseVenues';
 import { makeVenueKey, makeNameOnlyKey } from '@/lib/venueKeys';
 import { DraftVenue, RemoteVenue, VenueWithStats } from '@/types/venues';
+import { useAnonUser } from '@/hooks/useAnonUser';
 
 export default function HomePage() {
   const [venues, setVenues] = useState<VenueWithStats[]>([]);
@@ -21,6 +22,7 @@ export default function HomePage() {
   const [remoteError, setRemoteError] = useState<string | null>(null);
   const [draftVenue, setDraftVenue] = useState<DraftVenue>(null);
   const addVenueRef = useRef<HTMLDivElement | null>(null);
+  const { user, loading: userLoading } = useAnonUser();
 
   const existingVenueLookup = useMemo(() => {
     const lookup: Record<string, string> = {};
@@ -37,6 +39,7 @@ export default function HomePage() {
   }, [venues]);
 
   const loadVenues = useCallback(async () => {
+    if (userLoading || !user) return;
     setLoading(true);
 
     const { data, error } = await supabase
@@ -53,7 +56,7 @@ export default function HomePage() {
     const withStats = mapSupabaseVenues(data || []);
     setVenues(withStats);
     setLoading(false);
-  }, []);
+  }, [userLoading, user]);
 
   useEffect(() => {
     loadVenues();
@@ -143,7 +146,7 @@ export default function HomePage() {
   }, [hasQuery, resultLabel]);
 
   useEffect(() => {
-    if (!hasQuery) {
+    if (!hasQuery || userLoading || !user) {
       setRemoteResults([]);
       setRemoteError(null);
       setRemoteLoading(false);
@@ -184,7 +187,7 @@ export default function HomePage() {
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [hasQuery, search, selectedCity]);
+  }, [hasQuery, search, selectedCity, userLoading, user]);
 
   function handleExampleVenue(name: string) {
     setSelectedCity('All');
