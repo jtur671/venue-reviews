@@ -83,9 +83,17 @@ export async function GET(req: NextRequest) {
       let city = '';
       let country = '';
       const parts = address.split(',').map((s) => s.trim());
-      if (parts.length >= 2) {
+      if (parts.length >= 4) {
+        country = parts[parts.length - 1];
+        city = parts[parts.length - 3];
+      } else if (parts.length === 3) {
         country = parts[parts.length - 1];
         city = parts[parts.length - 2];
+      } else if (parts.length === 2) {
+        country = parts[1];
+        city = parts[0];
+      } else if (parts.length === 1) {
+        country = parts[0];
       }
 
       return {

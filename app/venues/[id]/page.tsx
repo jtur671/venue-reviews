@@ -5,8 +5,9 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { StarRating } from '@/components/StarRating';
-import { ReviewList, Review } from '@/components/ReviewList';
+import { ReviewList } from '@/components/ReviewList';
 import { ReviewForm } from '@/components/ReviewForm';
+import { Review } from '@/types/venues';
 
 type Venue = {
   id: string;
@@ -16,6 +17,8 @@ type Venue = {
   address: string | null;
 };
 
+type AspectKey = 'sound_score' | 'vibe_score' | 'staff_score' | 'layout_score';
+
 export default function VenuePage() {
   const params = useParams<{ id: string }>();
   const venueId = params.id as string;
@@ -24,13 +27,28 @@ export default function VenuePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const avgScore = useMemo(
-    () =>
-      reviews.length > 0
-        ? reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length
-        : null,
-    [reviews]
-  );
+  const avgScore = useMemo(() => {
+    if (!reviews.length) return null;
+    const total = reviews.reduce((sum, r) => sum + (r.score || 0), 0);
+    return total / reviews.length;
+  }, [reviews]);
+
+  const aspectAverages = useMemo(() => {
+    const calcAverage = (key: AspectKey) => {
+      const values = reviews
+        .map((r) => r[key])
+        .filter((val): val is number => typeof val === 'number');
+      if (!values.length) return null;
+      return values.reduce((a, b) => a + b, 0) / values.length;
+    };
+
+    return {
+      sound: calcAverage('sound_score'),
+      vibe: calcAverage('vibe_score'),
+      staff: calcAverage('staff_score'),
+      layout: calcAverage('layout_score'),
+    };
+  }, [reviews]);
 
   const loadVenue = useCallback(async () => {
     if (!venueId) return;
@@ -54,7 +72,9 @@ export default function VenuePage() {
 
     const { data, error } = await supabase
       .from('reviews')
-      .select('id, reviewer_name, score, comment, created_at')
+      .select(
+        'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score'
+      )
       .eq('venue_id', venueId)
       .order('created_at', { ascending: false });
 
@@ -110,10 +130,27 @@ export default function VenuePage() {
               <div className="venue-header-score">
                 {avgScore !== null ? (
                   <>
-                    <StarRating score={avgScore} />{' '}
-                    <strong>{avgScore.toFixed(1)}/10</strong> ·{' '}
-                    {reviews.length} review
-                    {reviews.length === 1 ? '' : 's'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <StarRating score={avgScore} />
+                      <strong>{avgScore.toFixed(1)}/10 overall</strong>
+                      <span className="section-subtitle">
+                        · {reviews.length} review{reviews.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <div className="section-subtitle" style={{ marginTop: '0.35rem' }}>
+                      {aspectAverages.sound !== null && (
+                        <span>Sound {aspectAverages.sound.toFixed(1)}</span>
+                      )}
+                      {aspectAverages.vibe !== null && (
+                        <span> · Vibe {aspectAverages.vibe.toFixed(1)}</span>
+                      )}
+                      {aspectAverages.staff !== null && (
+                        <span> · Staff {aspectAverages.staff.toFixed(1)}</span>
+                      )}
+                      {aspectAverages.layout !== null && (
+                        <span> · Layout {aspectAverages.layout.toFixed(1)}</span>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <>No ratings yet.</>

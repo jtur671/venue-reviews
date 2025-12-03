@@ -1,13 +1,6 @@
 import Link from 'next/link';
 import { StarRating } from '@/components/StarRating';
-
-export type VenueWithStats = {
-  id: string;
-  name: string;
-  city: string;
-  avgScore: number | null;
-  reviewCount: number;
-};
+import { VenueWithStats } from '@/types/venues';
 
 type VenueListProps = {
   venues: VenueWithStats[];

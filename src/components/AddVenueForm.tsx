@@ -2,13 +2,7 @@
 
 import { useEffect, useState, FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-
-export type DraftVenue = {
-  name?: string;
-  city?: string;
-  country?: string;
-  address?: string;
-} | null;
+import { DraftVenue } from '@/types/venues';
 
 type AddVenueFormProps = {
   onAdded: () => void;

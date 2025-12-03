@@ -1,10 +1,6 @@
-export type RemoteVenue = {
-  id: string;
-  name: string;
-  city: string;
-  country: string;
-  address: string;
-};
+import Link from 'next/link';
+import { makeVenueKey, makeNameOnlyKey, makeNameWithoutCityKey } from '@/lib/venueKeys';
+import { RemoteVenue } from '@/types/venues';
 
 type RemoteSearchResultsProps = {
   results: RemoteVenue[];
@@ -12,6 +8,7 @@ type RemoteSearchResultsProps = {
   error?: string | null;
   hasQuery: boolean;
   onSelectVenue: (venue: RemoteVenue) => void;
+  existingVenueLookup: Record<string, string>;
 };
 
 export function RemoteSearchResults({
@@ -20,6 +17,7 @@ export function RemoteSearchResults({
   error,
   hasQuery,
   onSelectVenue,
+  existingVenueLookup,
 }: RemoteSearchResultsProps) {
   if (!hasQuery) return null;
 
@@ -48,39 +46,61 @@ export function RemoteSearchResults({
 
       {!loading && !error && results.length > 0 && (
         <ul className="venue-list">
-          {results.map((v) => (
-            <li key={v.id} style={{ marginBottom: '0.5rem' }}>
-              <div className="card venue-card">
-                <div className="venue-card-main">
-                  <div className="venue-name">{v.name}</div>
-                  <div className="venue-city">
-                    {[v.city, v.country].filter(Boolean).join(', ')}
-                  </div>
-                  {v.address && (
-                    <div
-                      className="venue-header-address"
-                      style={{ marginTop: '0.1rem' }}
-                    >
-                      {v.address}
+          {results.map((v) => {
+            const key = makeVenueKey(v.name, v.city);
+            const nameOnlyKey = makeNameOnlyKey(v.name);
+            const strippedKey = makeNameWithoutCityKey(v.name, v.city);
+            const existingId =
+              existingVenueLookup[key] ??
+              existingVenueLookup[nameOnlyKey] ??
+              existingVenueLookup[strippedKey];
+
+            return (
+              <li key={v.id} style={{ marginBottom: '0.5rem' }}>
+                <div className="card venue-card">
+                  <div className="venue-card-main">
+                    <div className="venue-name">{v.name}</div>
+                    <div className="venue-city">
+                      {[v.city, v.country].filter(Boolean).join(', ')}
                     </div>
-                  )}
-                </div>
-                <div className="venue-score" style={{ textAlign: 'right' }}>
-                  <div className="venue-score-sub" style={{ marginBottom: '0.25rem' }}>
-                    No report card yet
+                    {v.address && (
+                      <div
+                        className="venue-header-address"
+                        style={{ marginTop: '0.1rem' }}
+                      >
+                        {v.address}
+                      </div>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    onClick={() => onSelectVenue(v)}
-                    style={{ fontSize: '0.75rem', paddingInline: '0.75rem' }}
-                  >
-                    Create report card
-                  </button>
+
+                  <div className="venue-score" style={{ textAlign: 'right' }}>
+                    {existingId ? (
+                      <Link
+                        href={`/venues/${existingId}`}
+                        className="btn btn--primary"
+                        style={{
+                          fontSize: '0.75rem',
+                          paddingInline: '0.75rem',
+                          background: 'linear-gradient(135deg, #34d399, #10b981)',
+                        }}
+                      >
+                        View report card
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => onSelectVenue(v)}
+                        style={{ fontSize: '0.75rem', paddingInline: '0.75rem' }}
+                      >
+                        Create report card
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

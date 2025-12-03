@@ -1,19 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { VenueFilters } from '@/components/VenueFilters';
-import { AddVenueForm, DraftVenue } from '@/components/AddVenueForm';
-import {
-  VenueList,
-  VenueWithStats as VenueListItem,
-} from '@/components/VenueList';
-import {
-  RemoteSearchResults,
-  RemoteVenue,
-} from '@/components/RemoteSearchResults';
-
-type VenueWithStats = VenueListItem;
+import { AddVenueForm } from '@/components/AddVenueForm';
+import { VenueList } from '@/components/VenueList';
+import { RemoteSearchResults } from '@/components/RemoteSearchResults';
+import { mapSupabaseVenues } from '@/lib/mapSupabaseVenues';
+import { makeVenueKey, makeNameOnlyKey } from '@/lib/venueKeys';
+import { DraftVenue, RemoteVenue, VenueWithStats } from '@/types/venues';
 
 export default function HomePage() {
   const [venues, setVenues] = useState<VenueWithStats[]>([]);
@@ -25,6 +20,21 @@ export default function HomePage() {
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
   const [draftVenue, setDraftVenue] = useState<DraftVenue>(null);
+  const addVenueRef = useRef<HTMLDivElement | null>(null);
+
+  const existingVenueLookup = useMemo(() => {
+    const lookup: Record<string, string> = {};
+    venues.forEach((v) => {
+      if (!v.name || !v.city) return;
+      const key = makeVenueKey(v.name, v.city);
+      lookup[key] = v.id;
+      const nameOnlyKey = makeNameOnlyKey(v.name);
+      if (!lookup[nameOnlyKey]) {
+        lookup[nameOnlyKey] = v.id;
+      }
+    });
+    return lookup;
+  }, [venues]);
 
   const loadVenues = useCallback(async () => {
     setLoading(true);
@@ -40,26 +50,7 @@ export default function HomePage() {
       return;
     }
 
-    const withStats: VenueWithStats[] = (data || []).map((v: any) => {
-      const reviews = v.reviews || [];
-      const reviewCount = reviews.length;
-      const avgScore =
-        reviewCount > 0
-          ? reviews.reduce(
-              (sum: number, r: { score: number }) => sum + r.score,
-              0
-            ) / reviewCount
-          : null;
-
-      return {
-        id: v.id,
-        name: v.name,
-        city: v.city,
-        avgScore,
-        reviewCount,
-      };
-    });
-
+    const withStats = mapSupabaseVenues(data || []);
     setVenues(withStats);
     setLoading(false);
   }, []);
@@ -212,6 +203,7 @@ export default function HomePage() {
       country: v.country,
       address: v.address,
     });
+    addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
   }
 
   return (
@@ -263,29 +255,33 @@ export default function HomePage() {
         </section>
       )}
 
-      <RemoteSearchResults
-        results={remoteResults}
-        loading={remoteLoading}
-        error={remoteError}
-        hasQuery={hasQuery}
-        onSelectVenue={handleSelectRemoteVenue}
-      />
-
       {hasQuery ? (
-        <VenueList
-          venues={filteredVenues}
-          loading={loading}
-          label={communityLabel}
-        />
+        <>
+          <VenueList
+            venues={filteredVenues}
+            loading={loading}
+            label={communityLabel}
+          />
+          <RemoteSearchResults
+            results={remoteResults}
+            loading={remoteLoading}
+            error={remoteError}
+            hasQuery={hasQuery}
+            onSelectVenue={handleSelectRemoteVenue}
+            existingVenueLookup={existingVenueLookup}
+          />
+        </>
       ) : (
         <section className="section">
           <p className="section-subtitle">
-            No results yet. Search for a venue or choose a popular city above to see ratings.
+            Start by searching for a venue or tapping a city above to see ratings.
           </p>
         </section>
       )}
 
-      <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
+      <div ref={addVenueRef}>
+        <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
+      </div>
     </div>
   );
 }
