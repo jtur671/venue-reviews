@@ -282,9 +282,11 @@ export default function HomePage() {
         </section>
       )}
 
-      <div ref={addVenueRef}>
-        <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
-      </div>
+      {hasQuery && (
+        <div ref={addVenueRef}>
+          <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
+        </div>
+      )}
     </div>
   );
 }
