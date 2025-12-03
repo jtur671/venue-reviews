@@ -259,11 +259,9 @@ export default function HomePage() {
                 {city}
               </button>
             ))}
-          </div>
+        </div>
         </section>
       )}
-
-      <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
 
       <RemoteSearchResults
         results={remoteResults}
@@ -286,6 +284,8 @@ export default function HomePage() {
           </p>
         </section>
       )}
+
+      <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
     </div>
   );
 }

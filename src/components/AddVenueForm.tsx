@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export type DraftVenue = {
@@ -63,136 +63,157 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
     setNewCity('');
     setNewCountry('USA');
     setNewAddress('');
+
     setAdding(false);
     onAdded();
   }
 
   return (
-    <section className="section card">
-      <div
-        className="section-header"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: showAddForm ? '0.75rem' : 0,
-        }}
-      >
-        <div>
-          <h2 className="section-title">Add a venue</h2>
-          <p className="section-subtitle">
-            Help the community by adding rooms that deserve a proper report card.
-          </p>
+    <section className="section" style={{ marginTop: '1.5rem' }}>
+      {!showAddForm && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            style={{
+              borderRadius: '999px',
+              paddingInline: '1.5rem',
+              paddingBlock: '0.6rem',
+              fontSize: '0.9rem',
+            }}
+            onClick={() => setShowAddForm(true)}
+          >
+            Can’t find your venue? Add it
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAddForm((prev) => !prev)}
-          className="btn btn--ghost"
-        >
-          {showAddForm ? 'Close' : "Can’t find your venue? Add it"}
-        </button>
-      </div>
+      )}
 
       {showAddForm && (
-        <form
-          onSubmit={handleAddVenue}
-          className="section"
-          style={{ marginBottom: 0 }}
+        <div
+          className="card"
+          style={{ maxWidth: '520px', margin: '0 auto', padding: '0.9rem 1rem' }}
         >
-          <div style={{ marginBottom: '0.6rem' }}>
-            <label
-              className="section-subtitle"
-              style={{ display: 'block', marginBottom: '0.25rem' }}
-            >
-              Name*
-            </label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Bad Bird Bar"
-              className="input"
-              required
-            />
-          </div>
-
           <div
+            className="section-header"
             style={{
-              display: 'grid',
-              gridTemplateColumns: '1.1fr 0.9fr',
-              gap: '0.5rem',
-              marginBottom: '0.6rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '0.75rem',
             }}
           >
             <div>
+              <h2 className="section-title">Add a venue</h2>
+              <p className="section-subtitle">
+                Help the community by adding rooms that deserve a proper report card.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              style={{ fontSize: '0.8rem' }}
+              onClick={() => setShowAddForm(false)}
+            >
+              Close
+            </button>
+          </div>
+
+          <form onSubmit={handleAddVenue} className="section" style={{ marginBottom: 0 }}>
+            <div style={{ marginBottom: '0.6rem' }}>
               <label
                 className="section-subtitle"
                 style={{ display: 'block', marginBottom: '0.25rem' }}
               >
-                City*
+                Name*
               </label>
               <input
                 type="text"
-                value={newCity}
-                onChange={(e) => setNewCity(e.target.value)}
-                placeholder="Miami"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Bad Bird Bar"
                 className="input"
                 required
               />
             </div>
-            <div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1.1fr 0.9fr',
+                gap: '0.5rem',
+                marginBottom: '0.6rem',
+              }}
+            >
+              <div>
+                <label
+                  className="section-subtitle"
+                  style={{ display: 'block', marginBottom: '0.25rem' }}
+                >
+                  City*
+                </label>
+                <input
+                  type="text"
+                  value={newCity}
+                  onChange={(e) => setNewCity(e.target.value)}
+                  placeholder="Miami"
+                  className="input"
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  className="section-subtitle"
+                  style={{ display: 'block', marginBottom: '0.25rem' }}
+                >
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={newCountry}
+                  onChange={(e) => setNewCountry(e.target.value)}
+                  className="input"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '0.6rem' }}>
               <label
                 className="section-subtitle"
                 style={{ display: 'block', marginBottom: '0.25rem' }}
               >
-                Country
+                Address (optional)
               </label>
               <input
                 type="text"
-                value={newCountry}
-                onChange={(e) => setNewCountry(e.target.value)}
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                placeholder="123 Main St"
                 className="input"
               />
             </div>
-          </div>
 
-          <div style={{ marginBottom: '0.6rem' }}>
-            <label
-              className="section-subtitle"
-              style={{ display: 'block', marginBottom: '0.25rem' }}
+            {addError && (
+              <p
+                style={{
+                  fontSize: '0.75rem',
+                  color: '#f97373',
+                  marginBottom: '0.4rem',
+                }}
+              >
+                {addError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={adding}
+              className="btn btn--primary"
+              style={{ width: '100%' }}
             >
-              Address (optional)
-            </label>
-            <input
-              type="text"
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-              placeholder="123 Main St"
-              className="input"
-            />
-          </div>
-
-          {addError && (
-            <p
-              style={{
-                fontSize: '0.75rem',
-                color: '#f97373',
-                marginBottom: '0.4rem',
-              }}
-            >
-              {addError}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={adding}
-            className="btn btn--primary"
-            style={{ width: '100%' }}
-          >
-            {adding ? 'Adding…' : 'Add venue'}
-          </button>
-        </form>
+              {adding ? 'Adding…' : 'Add venue'}
+            </button>
+          </form>
+        </div>
       )}
     </section>
   );
