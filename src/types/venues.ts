@@ -22,6 +22,17 @@ export type DraftVenue = {
   address?: string;
 } | null;
 
+export type AspectKey = 'sound_score' | 'vibe_score' | 'staff_score' | 'layout_score';
+
+export const DEFAULT_ASPECT_SCORE = 7;
+
+export const DEFAULT_ASPECTS: Record<AspectKey, number> = {
+  sound_score: DEFAULT_ASPECT_SCORE,
+  vibe_score: DEFAULT_ASPECT_SCORE,
+  staff_score: DEFAULT_ASPECT_SCORE,
+  layout_score: DEFAULT_ASPECT_SCORE,
+};
+
 export type Review = {
   id: string;
   reviewer: string | null;
@@ -33,4 +44,5 @@ export type Review = {
   vibe_score: number | null;
   staff_score: number | null;
   layout_score: number | null;
+  user_id?: string | null;
 };

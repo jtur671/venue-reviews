@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { supabase } from '@/lib/supabaseClient';
-import { KNOWN_VENUE_ID } from './fixtures';
+import { KNOWN_VENUE_ID } from '../fixtures';
 
 const requiredEnvVars = [
   'NEXT_PUBLIC_SUPABASE_URL',

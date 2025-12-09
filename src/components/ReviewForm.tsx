@@ -1,110 +1,170 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { useAnonUser } from '@/hooks/useAnonUser';
+import { useState, useEffect, FormEvent } from 'react';
+import {
+  createReview,
+  updateReview,
+  deleteReview,
+  type CreateReviewInput,
+  type UpdateReviewInput,
+} from '@/lib/services/reviewService';
+import { Review, AspectKey, DEFAULT_ASPECTS } from '@/types/venues';
+import { ASPECTS } from '@/constants/aspects';
+import { ERROR_COLOR } from '@/constants/ui';
+import { calculateOverallScore, formatScore } from '@/lib/utils/scores';
+import { formatError } from '@/lib/utils/errors';
 
 type ReviewFormProps = {
   venueId: string;
+  currentUserId: string | null;
+  existingReview?: Review | null;
   onSubmitted: () => void;
 };
 
-type AspectKey = 'sound_score' | 'vibe_score' | 'staff_score' | 'layout_score';
-
-const ASPECTS: { key: AspectKey; label: string }[] = [
-  { key: 'sound_score', label: 'Sound' },
-  { key: 'vibe_score', label: 'Vibe / Crowd' },
-  { key: 'staff_score', label: 'Staff / Bar' },
-  { key: 'layout_score', label: 'Layout / Sightlines' },
-];
-
-export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
-  const { user, loading: userLoading } = useAnonUser();
+export function ReviewForm({
+  venueId,
+  currentUserId,
+  existingReview,
+  onSubmitted,
+}: ReviewFormProps) {
   const [reviewer, setReviewer] = useState('');
   const [comment, setComment] = useState('');
-  const [aspects, setAspects] = useState<Record<AspectKey, number>>({
-    sound_score: 8,
-    vibe_score: 8,
-    staff_score: 8,
-    layout_score: 8,
-  });
+  const [aspects, setAspects] = useState<Record<AspectKey, number>>(DEFAULT_ASPECTS);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!existingReview) {
+      // Reset form when no existing review
+      setReviewer('');
+      setComment('');
+      setAspects({
+        sound_score: 7,
+        vibe_score: 7,
+        staff_score: 7,
+        layout_score: 7,
+      });
+      return;
+    }
+
+    setReviewer(existingReview.reviewer ?? existingReview.reviewer_name ?? '');
+    setComment(existingReview.comment ?? '');
+    setAspects({
+      sound_score: existingReview.sound_score ?? DEFAULT_ASPECTS.sound_score,
+      vibe_score: existingReview.vibe_score ?? DEFAULT_ASPECTS.vibe_score,
+      staff_score: existingReview.staff_score ?? DEFAULT_ASPECTS.staff_score,
+      layout_score: existingReview.layout_score ?? DEFAULT_ASPECTS.layout_score,
+    });
+  }, [existingReview]);
 
   function handleAspectChange(key: AspectKey, value: number) {
     setAspects((prev) => ({ ...prev, [key]: value }));
   }
 
-  const overallScore = Math.round(
-    (aspects.sound_score +
-      aspects.vibe_score +
-      aspects.staff_score +
-      aspects.layout_score) /
-      4
-  );
+  const overallScore = calculateOverallScore(aspects);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!user) {
+    if (!currentUserId) {
       setError('Unable to start a session. Please try again.');
       return;
     }
 
     setSubmitting(true);
 
-    const { error } = await supabase.from('reviews').insert({
-      venue_id: venueId,
-      user_id: user.id,
-      reviewer_name: reviewer.trim() || null,
-      comment: comment.trim() || null,
-      score: overallScore,
-      sound_score: aspects.sound_score,
-      vibe_score: aspects.vibe_score,
-      staff_score: aspects.staff_score,
-      layout_score: aspects.layout_score,
-    });
+    if (existingReview) {
+      const updateData: UpdateReviewInput = {
+        reviewer_name: reviewer.trim() || null,
+        comment: comment.trim() || null,
+        score: overallScore,
+        sound_score: aspects.sound_score,
+        vibe_score: aspects.vibe_score,
+        staff_score: aspects.staff_score,
+        layout_score: aspects.layout_score,
+      };
+
+      const { error } = await updateReview(existingReview.id, currentUserId, updateData);
+
+      if (error) {
+        setError(error.message || 'Could not update your review. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+    } else {
+      const createData: CreateReviewInput = {
+        venue_id: venueId,
+        user_id: currentUserId,
+        reviewer_name: reviewer.trim() || null,
+        comment: comment.trim() || null,
+        score: overallScore,
+        sound_score: aspects.sound_score,
+        vibe_score: aspects.vibe_score,
+        staff_score: aspects.staff_score,
+        layout_score: aspects.layout_score,
+      };
+
+      const { error } = await createReview(createData);
+
+      if (error) {
+        setError(formatError(error, 'Could not save your review. Please try again.'));
+        setSubmitting(false);
+        return;
+      }
+
+      setReviewer('');
+      setComment('');
+      setAspects(DEFAULT_ASPECTS);
+    }
+
+    setSubmitting(false);
+    onSubmitted();
+  }
+
+  async function handleDelete() {
+    if (!existingReview || !currentUserId) return;
+
+    if (!confirm('Remove your report card? This cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+
+    const { error } = await deleteReview(existingReview.id, currentUserId);
 
     if (error) {
-      if ((error as any).code === '23505') {
-        setError('You’ve already left a report card for this venue from this browser.');
-      } else {
-        console.error('Error adding review:', error);
-        setError('Could not save your review. Please try again.');
-      }
-      setSubmitting(false);
+      setError(formatError(error, 'Could not remove your review. Please try again.'));
+      setDeleting(false);
       return;
     }
 
     setReviewer('');
     setComment('');
-    setAspects({
-      sound_score: 8,
-      vibe_score: 8,
-      staff_score: 8,
-      layout_score: 8,
-    });
-    setSubmitting(false);
+    setAspects(DEFAULT_ASPECTS);
+    setDeleting(false);
     onSubmitted();
   }
 
-  const isDisabled = submitting || userLoading;
+  const isDisabled = submitting || deleting || !currentUserId;
 
   return (
     <form onSubmit={handleSubmit} className="section card">
-      <div className="section-header" style={{ marginBottom: '0.75rem' }}>
-        <h2 className="section-title">Leave a report card</h2>
+      <div className="section-header section-header-large">
+        <h2 className="section-title">
+          {existingReview ? 'Update your report card' : 'Leave a report card'}
+        </h2>
         <p className="section-subtitle">
-          Rate the room so other people know what they're walking into.
+          {existingReview
+            ? 'Update your ratings and notes after another show.'
+            : "Rate the room so other people know what they're walking into before they book a show."}
         </p>
       </div>
 
-      <div style={{ marginBottom: '0.6rem' }}>
-        <label
-          className="section-subtitle"
-          style={{ display: 'block', marginBottom: '0.25rem' }}
-        >
+      <div className="form-field">
+        <label className="section-subtitle form-label">
           Name (optional)
         </label>
         <input
@@ -112,55 +172,46 @@ export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
           value={reviewer}
           onChange={(e) => setReviewer(e.target.value)}
           placeholder="Anonymous"
+          disabled={submitting || deleting}
         />
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: '0.5rem',
-          marginBottom: '0.8rem',
-        }}
-      >
-        {ASPECTS.map(({ key, label }) => (
-          <div key={key}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '0.2rem',
-              }}
-            >
-              <span className="section-subtitle">{label}</span>
-              <span className="section-subtitle" style={{ fontWeight: 500 }}>
-                {aspects[key]}/10
-              </span>
+      <div className="form-field" style={{ marginBottom: '1rem' }}>
+        {ASPECTS.map(({ key, label, icon, color }) => {
+          const value = aspects[key];
+          const fillPercentage = ((value - 1) / 9) * 100;
+          return (
+            <div key={key} className="slider-row">
+              <div className="slider-label-row">
+                <span className="slider-icon">{icon}</span>
+                <span className="section-subtitle">{label}</span>
+                <span className="slider-value">{value}/10</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={value}
+                onChange={(e) => handleAspectChange(key, Number(e.target.value))}
+                disabled={submitting || deleting}
+                className="slider-input"
+                style={
+                  {
+                    '--slider-color': color,
+                    '--slider-fill': `${fillPercentage}%`,
+                  } as React.CSSProperties
+                }
+              />
             </div>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              value={aspects[key]}
-              onChange={(e) => handleAspectChange(key, Number(e.target.value))}
-              style={{ width: '100%' }}
-            />
-          </div>
-        ))}
+          );
+        })}
+        <div className="section-subtitle text-xs text-center text-muted" style={{ marginTop: '0.5rem' }}>
+          1 = Poor · 5 = Okay · 10 = Amazing
+        </div>
       </div>
 
-      <div
-        className="section-subtitle"
-        style={{ marginBottom: '0.8rem', fontWeight: 500 }}
-      >
-        Overall: {overallScore}/10
-      </div>
-
-      <div style={{ marginBottom: '0.7rem' }}>
-        <label
-          className="section-subtitle"
-          style={{ display: 'block', marginBottom: '0.25rem' }}
-        >
+      <div className="form-field" style={{ marginBottom: '0.7rem' }}>
+        <label className="section-subtitle form-label">
           What should people know?
         </label>
         <textarea
@@ -168,34 +219,44 @@ export function ReviewForm({ venueId, onSubmitted }: ReviewFormProps) {
           rows={4}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Best and worst parts of the night…"
+          placeholder="Best and worst parts of the night, surprises, deal-breakers…"
+          disabled={submitting || deleting}
         />
       </div>
 
-      {error && (
-        <p
-          style={{
-            fontSize: '0.75rem',
-            color: '#f97373',
-            marginBottom: '0.4rem',
-          }}
-        >
-          {error}
-        </p>
-      )}
+      {error && <p className="form-error">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={isDisabled}
-        className="btn btn--primary"
-        style={{ width: '100%' }}
-      >
-        {userLoading
-          ? 'Preparing form…'
-          : submitting
-            ? 'Submitting…'
-            : 'Submit review'}
-      </button>
+      <div className="form-actions" style={{ marginBottom: existingReview ? '0.5rem' : 0 }}>
+          <div className="badge-score" style={{ whiteSpace: 'nowrap' }}>
+            Overall: {formatScore(overallScore)}/10
+          </div>
+        <button
+          type="submit"
+          disabled={isDisabled}
+          className="btn btn--primary"
+          style={{ flex: 1, minWidth: 0 }}
+        >
+          {submitting
+            ? existingReview
+              ? 'Updating…'
+              : 'Submitting…'
+            : existingReview
+              ? 'Update report card'
+              : 'Submit review'}
+        </button>
+      </div>
+
+      {existingReview && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="btn btn--ghost text-sm"
+          style={{ width: '100%', padding: '0.35rem 0.75rem' }}
+        >
+          {deleting ? 'Removing…' : 'Remove my report card'}
+        </button>
+      )}
     </form>
   );
 }

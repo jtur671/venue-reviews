@@ -1,9 +1,11 @@
+import { RATING_ICONS_MAX } from '@/constants/ui';
+
 type RatingIconsProps = {
   score: number | null;
   maxIcons?: number;
 };
 
-export function RatingIcons({ score, maxIcons = 5 }: RatingIconsProps) {
+export function RatingIcons({ score, maxIcons = RATING_ICONS_MAX }: RatingIconsProps) {
   if (score == null) {
     return <span className="rating-none" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No score yet</span>;
   }

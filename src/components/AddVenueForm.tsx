@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { createVenue } from '@/lib/services/venueService';
 import { DraftVenue } from '@/types/venues';
+import { ERROR_COLOR } from '@/constants/ui';
 
 type AddVenueFormProps = {
   onAdded: () => void;
@@ -43,27 +44,21 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
 
     setAdding(true);
 
-    const { data, error } = await supabase
-      .from('venues')
-      .insert({
-        name: newName.trim(),
-        city: newCity.trim(),
-        country: newCountry.trim() || 'USA',
-        address: newAddress.trim() || null,
-      })
-      .select('id')
-      .single();
+    const { data, error } = await createVenue({
+      name: newName,
+      city: newCity,
+      country: newCountry,
+      address: newAddress || null,
+    });
 
     if (error) {
-      console.error('Error adding venue:', error);
-      setAddError('Could not add venue. Please try again.');
+      setAddError(error.message || 'Could not add venue. Please try again.');
       setAdding(false);
       return;
     }
 
-    const newId = data?.id;
-    if (newId) {
-      router.push(`/venues/${newId}`);
+    if (data?.id) {
+      router.push(`/venues/${data.id}`);
       return;
     }
 
@@ -204,7 +199,7 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
               <p
                 style={{
                   fontSize: '0.75rem',
-                  color: '#f97373',
+                  color: ERROR_COLOR,
                   marginBottom: '0.4rem',
                 }}
               >

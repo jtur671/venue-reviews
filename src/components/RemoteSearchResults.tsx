@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { makeVenueKey, makeNameOnlyKey, makeNameWithoutCityKey } from '@/lib/venueKeys';
 import { RemoteVenue } from '@/types/venues';
+import { ERROR_COLOR, SUCCESS_COLOR_START, SUCCESS_COLOR_END } from '@/constants/ui';
+import { LoadingState } from '@/components/LoadingState';
+import { EmptyState } from '@/components/EmptyState';
+import { formatError } from '@/lib/utils/errors';
 
 type RemoteSearchResultsProps = {
   results: RemoteVenue[];
@@ -30,18 +34,16 @@ export function RemoteSearchResults({
         </p>
       </div>
 
-      {loading && <p className="section-subtitle">Searching venues…</p>}
+      {loading && <LoadingState message="Searching venues…" />}
 
       {!loading && error && (
-        <p className="section-subtitle" style={{ color: '#f97373' }}>
-          {error}
+        <p className="section-subtitle" style={{ color: ERROR_COLOR }}>
+          {formatError(error, 'There was a problem searching venues.')}
         </p>
       )}
 
       {!loading && !error && results.length === 0 && (
-        <p className="section-subtitle">
-          No venues found from the web for this search.
-        </p>
+        <EmptyState message="No venues found from the web for this search." />
       )}
 
       {!loading && !error && results.length > 0 && (
@@ -81,7 +83,7 @@ export function RemoteSearchResults({
                         style={{
                           fontSize: '0.75rem',
                           paddingInline: '0.75rem',
-                          background: 'linear-gradient(135deg, #34d399, #10b981)',
+                          background: `linear-gradient(135deg, ${SUCCESS_COLOR_START}, ${SUCCESS_COLOR_END})`,
                         }}
                       >
                         View report card

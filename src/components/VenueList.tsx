@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { RatingIcons } from '@/components/RatingIcons';
+import { LoadingState } from '@/components/LoadingState';
+import { EmptyState } from '@/components/EmptyState';
 import { VenueWithStats } from '@/types/venues';
+import { formatScore } from '@/lib/utils/scores';
 
 type VenueListProps = {
   venues: VenueWithStats[];
@@ -10,20 +13,12 @@ type VenueListProps = {
 
 export function VenueList({ venues, loading, label }: VenueListProps) {
   if (loading) {
-    return (
-      <section className="section">
-        <p className="section-subtitle">Loading venues…</p>
-      </section>
-    );
+    return <LoadingState message="Loading venues…" />;
   }
 
   if (!loading && venues.length === 0) {
     return (
-      <section className="section">
-        <p className="section-subtitle">
-          No venues match your filters yet. Try a different search or add one below.
-        </p>
-      </section>
+      <EmptyState message="No venues match your filters yet. Try a different search or add one below." />
     );
   }
 
@@ -62,7 +57,7 @@ export function VenueList({ venues, loading, label }: VenueListProps) {
               <div className="venue-score" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.1rem' }}>
                 <RatingIcons score={v.avgScore} />
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {v.avgScore?.toFixed(1) ?? '—'}/10
+                  {formatScore(v.avgScore)}/10
                 </div>
               </div>
             </Link>
