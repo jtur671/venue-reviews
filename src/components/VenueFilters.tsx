@@ -71,6 +71,8 @@ export function VenueFilters({
           placeholder="Type a venue name (like Bowery Ballroom) or tap a city to see how the room really feels."
           className="input"
           disabled={searchDisabled}
+          aria-label={searchDisabled ? 'Search disabled - city filter is active' : 'Search venues by name or city'}
+          aria-disabled={searchDisabled}
           style={{
             paddingLeft: '2.5rem',
             height: '2.75rem',

@@ -1,14 +1,14 @@
+import { memo } from 'react';
 import Link from 'next/link';
-import { RatingIcons } from './RatingIcons';
 import { EmptyState } from './EmptyState';
 import { VenueWithStats } from '@/types/venues';
-import { formatScore } from '@/lib/utils/scores';
+import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
 
 type RecentlyRatedSectionProps = {
   venues: VenueWithStats[];
 };
 
-export function RecentlyRatedSection({ venues }: RecentlyRatedSectionProps) {
+export const RecentlyRatedSection = memo(function RecentlyRatedSection({ venues }: RecentlyRatedSectionProps) {
   return (
     <section className="section">
       <div className="card hero-card">
@@ -19,24 +19,39 @@ export function RecentlyRatedSection({ venues }: RecentlyRatedSectionProps) {
           </p>
         </div>
         {venues.length ? (
-          <ul className="venue-list list-reset">
-            {venues.map((v) => (
-              <li key={v.id} className="recently-card-item">
-                <Link href={`/venues/${v.id}`} className="recently-card card-padding-sm">
-                  <div className="recently-main">
-                    <div className="recently-name">{v.name}</div>
-                    <div className="recently-meta">{v.city} · USA</div>
-                    <div className="recently-meta">
-                      {v.reviewCount === 1 ? '1 review' : `${v.reviewCount} reviews`} · Community report card
+          <ul className="venue-list venue-list--grid list-reset">
+            {venues.map((v) => {
+              const grade = scoreToGrade(v.avgScore);
+              const color = gradeColor(grade);
+              return (
+                <li key={v.id} className="recently-card-item">
+                  <Link 
+                    href={`/venues/${v.id}`} 
+                    className="recently-card card-padding-sm"
+                    aria-label={`${v.name} in ${v.city}, ${grade ? `grade ${grade}` : 'no rating yet'}`}
+                  >
+                    <div className="recently-main">
+                      <div className="recently-name-row">
+                        <div className="recently-name">{v.name}</div>
+                        {grade && (
+                          <span
+                            className="venue-grade-chip"
+                            style={{ backgroundColor: `${color}22`, color }}
+                            aria-label={`Grade ${grade}`}
+                          >
+                            {grade}
+                          </span>
+                        )}
+                      </div>
+                      <div className="recently-meta">{v.city} · USA</div>
+                      <div className="recently-meta">
+                        {v.reviewCount === 1 ? '1 review' : `${v.reviewCount} reviews`} · Community report card
+                      </div>
                     </div>
-                  </div>
-                  <div className="recently-rating">
-                    <RatingIcons score={v.avgScore} />
-                    <div className="recently-rating-text">{v.avgScore?.toFixed(1) ?? '—'}/10</div>
-                  </div>
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <EmptyState message="Ratings will appear here as the community weighs in." />
@@ -44,4 +59,4 @@ export function RecentlyRatedSection({ venues }: RecentlyRatedSectionProps) {
       </div>
     </section>
   );
-}
+});

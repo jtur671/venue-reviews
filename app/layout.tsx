@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { Header } from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'Venue Reviews',
@@ -31,29 +31,7 @@ export default function RootLayout({
       </head>
       <body>
         <div className="app-shell">
-          <header className="app-header">
-            <div
-              className="app-header-inner"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: '1rem',
-                flexWrap: 'wrap',
-              }}
-            >
-              <div>
-                <div className="app-brand">
-                  <span className="app-logo-dot" />
-                  <span className="app-brand-text">Venue Reviews</span>
-                </div>
-                <p className="app-tagline">
-                  Rotten Tomatoes, but for live music venues.
-                </p>
-              </div>
-              <ThemeToggle />
-            </div>
-          </header>
+          <Header />
 
           <main className="app-main">{children}</main>
 

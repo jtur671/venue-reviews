@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { StarRating } from '@/components/StarRating';
 import { ReviewList } from '@/components/ReviewList';
 import { ReviewForm } from '@/components/ReviewForm';
 import { LoadingState } from '@/components/LoadingState';
@@ -11,12 +10,17 @@ import { useVenue } from '@/hooks/useVenue';
 import { useReviews } from '@/hooks/useReviews';
 import { useReviewStats } from '@/hooks/useReviewStats';
 import { useAnonUser } from '@/hooks/useAnonUser';
-import { formatScore } from '@/lib/utils/scores';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useProfile } from '@/hooks/useProfile';
+import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
+import { RoleChoiceModal } from '@/components/RoleChoiceModal';
 
 export default function VenuePage() {
   const params = useParams<{ id: string }>();
   const venueId = params.id as string;
-  const { user } = useAnonUser();
+  const { user: anonUser } = useAnonUser();
+  const { user: currentUser } = useCurrentUser();
+  const { profile } = useProfile(currentUser);
 
   const { venue, loading: venueLoading, refetch: refetchVenue } = useVenue(venueId);
   const { reviews, myReview, otherReviews, loading: reviewsLoading, refetch: refetchReviews } = useReviews(venueId);
@@ -40,55 +44,74 @@ export default function VenuePage() {
 
       {venue && (
         <>
+          <div className="venue-hero">
+            <div className="venue-hero-overlay">
+              <span className="venue-hero-tag">
+                {venue.city ? `${venue.city} venue` : 'Live music venue'}
+              </span>
+              <span className="venue-hero-title">{venue.name}</span>
+            </div>
+          </div>
+
           <section className="section card">
-            <div className="section-header">
-              <h1 className="venue-header-name">{venue.name}</h1>
-              <p className="venue-header-meta">
-                {venue.city}, {venue.country}
-              </p>
-              {venue.address && (
-                <p className="venue-header-address">{venue.address}</p>
-              )}
-              <div className="venue-header-score">
-                {avgScore !== null ? (
-                  <>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        marginBottom: '0.35rem',
-                      }}
-                    >
-                      <StarRating score={avgScore} />
-                      <strong style={{ fontSize: '1rem', fontWeight: 700 }}>
-                        {formatScore(avgScore)}/10 overall
-                      </strong>
-                      <span className="section-subtitle">
-                        · {reviews.length} review{reviews.length === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                    <div className="section-subtitle" style={{ fontSize: '0.85rem' }}>
-                      {aspectAverages.sound !== null && (
-                        <span>Sound {formatScore(aspectAverages.sound)}</span>
-                      )}
-                      {aspectAverages.vibe !== null && (
-                        <span> · Vibe {formatScore(aspectAverages.vibe)}</span>
-                      )}
-                      {aspectAverages.staff !== null && (
-                        <span> · Staff {formatScore(aspectAverages.staff)}</span>
-                      )}
-                      {aspectAverages.layout !== null && (
-                        <span> · Layout {formatScore(aspectAverages.layout)}</span>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>No ratings yet.</>
+            <div className="venue-header-top">
+              <div>
+                <h1 className="venue-title">{venue.name}</h1>
+                <p className="venue-location">
+                  {venue.city}
+                  {venue.country ? ` · ${venue.country}` : null}
+                </p>
+                {venue.address && (
+                  <p className="venue-address">{venue.address}</p>
+                )}
+                {avgScore !== null && (
+                  <div className="section-subtitle" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                    {aspectAverages.sound !== null && (
+                      <span>Sound {aspectAverages.sound.toFixed(1)}</span>
+                    )}
+                    {aspectAverages.vibe !== null && (
+                      <span> · Vibe {aspectAverages.vibe.toFixed(1)}</span>
+                    )}
+                    {aspectAverages.staff !== null && (
+                      <span> · Staff {aspectAverages.staff.toFixed(1)}</span>
+                    )}
+                    {aspectAverages.layout !== null && (
+                      <span> · Layout {aspectAverages.layout.toFixed(1)}</span>
+                    )}
+                  </div>
                 )}
               </div>
+              {(() => {
+                const grade = scoreToGrade(avgScore);
+                const color = gradeColor(grade);
+                return (
+                  <div className="venue-grade-badge" style={{ borderColor: color }}>
+                    <div className="venue-grade-letter" style={{ color }}>
+                      {grade ?? '—'}
+                    </div>
+                    <div className="venue-grade-meta">
+                      <span className="venue-grade-label">Overall grade</span>
+                      {avgScore != null && (
+                        <span className="venue-grade-score">
+                          {avgScore.toFixed(1)}/10
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </section>
+
+          {profile && (
+            <RoleChoiceModal
+              profileId={profile.id}
+              initialRole={profile.role as 'artist' | 'fan' | null}
+              onRoleSet={(newRole) => {
+                // Role is updated in database, profile will refresh via useProfile hook
+              }}
+            />
+          )}
 
           {!myReview && otherReviews.length > 0 && (
             <section className="section" style={{ marginBottom: '0.5rem' }}>
@@ -100,31 +123,12 @@ export default function VenuePage() {
 
           <ReviewForm
             venueId={venueId}
-            currentUserId={user?.id ?? null}
+            currentUserId={currentUser?.id ?? anonUser?.id ?? null}
             existingReview={myReview ?? null}
             onSubmitted={refetchReviews}
           />
 
-          {myReview && (
-            <section className="section card">
-              <div className="section-header">
-                <h2 className="section-title">Your report card</h2>
-              </div>
-              <ReviewList reviews={[myReview]} showYouLabel={true} />
-            </section>
-          )}
-
-          {otherReviews.length > 0 && (
-            <section className="section card">
-              <div className="section-header">
-                <h2 className="section-title">Community reviews</h2>
-                <p className="section-subtitle" style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
-                  Real experiences from people who've been there.
-                </p>
-              </div>
-              <ReviewList reviews={otherReviews} />
-            </section>
-          )}
+          <ReviewList myReview={myReview} reviews={otherReviews} />
         </>
       )}
     </div>

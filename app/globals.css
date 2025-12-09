@@ -11,7 +11,7 @@
   --bg-elevated: #ffffff;
   --border-subtle: #e5e7eb;
   --text-main: #111827;
-  --text-muted: #6b7280;
+  --text-muted: #4b5563;
   --chip-bg: #f9fafb;
   --chip-border: #e5e7eb;
   --chip-active-bg: #2563eb;
@@ -27,7 +27,7 @@
   --bg-elevated: #020617;
   --border-subtle: #1e293b;
   --text-main: #e5e7eb;
-  --text-muted: #9ca3af;
+  --text-muted: #6b7280;
   --chip-bg: #020617;
   --chip-border: #334155;
   --chip-active-bg: #2563eb;
@@ -383,6 +383,24 @@ body {
   background: var(--bg);
 }
 
+.btn--danger {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn--danger:disabled {
+  background: #fca5a5;
+  border-color: #fca5a5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Chips */
 
 .chip-row {
@@ -415,9 +433,48 @@ body {
 }
 
 .chip--active {
+  color: #ffffff;
   background: var(--chip-active-bg);
   border-color: var(--chip-active-bg);
   color: var(--chip-active-text);
+}
+
+/* Account page stats */
+.stats-column {
+  flex: 1;
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  .stats-column {
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (max-width: 767px) {
+  .stats-column {
+    padding-right: 0;
+    border-right: none;
+  }
+}
+
+/* Account page stats */
+.stats-column {
+  flex: 1;
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  .stats-column {
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (max-width: 767px) {
+  .stats-column {
+    padding-right: 0;
+    border-right: none;
+  }
 }
 
 /* Venue list */
@@ -426,6 +483,26 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.venue-list--grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .venue-list--grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.venue-list-label {
+  margin-bottom: 0.5rem;
+}
+
+.venue-list-item {
+  margin-bottom: 0.6rem;
 }
 
 .venue-card {
@@ -438,6 +515,24 @@ body {
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.venue-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.venue-card-meta {
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+}
+
+.venue-location-chip {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 @media (hover: hover) {
@@ -495,29 +590,6 @@ body {
 
 /* Venue page */
 
-.venue-header-name {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-.venue-header-meta {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.venue-header-address {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-top: 0.15rem;
-}
-
-.venue-header-score {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-main);
-}
-
 /* Recently rated section */
 
 .recently-section {
@@ -564,6 +636,12 @@ body {
   min-width: 0;
 }
 
+.recently-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .recently-name {
   font-size: 0.95rem;
   font-weight: 600;
@@ -589,22 +667,6 @@ body {
   color: var(--text-muted);
 }
 
-/* Rating icons */
-
-.rating-icons {
-  display: inline-flex;
-  gap: 0.1rem;
-  align-items: center;
-}
-
-.rating-icon {
-  font-size: 0.9rem;
-  opacity: 0.35;
-}
-
-.rating-icon--filled {
-  opacity: 1;
-}
 
 @media (max-width: 640px) {
   .recently-card {
@@ -627,33 +689,197 @@ body {
   margin: 0;
 }
 
-.review-meta-row {
+.review-card {
+  margin-top: 0.75rem;
+}
+
+.review-card--mine {
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+.review-header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
-  margin-bottom: 0.2rem;
-  color: var(--text-muted);
+  align-items: baseline;
+  margin-bottom: 0.25rem;
 }
 
 .review-author {
-  font-weight: 500;
-  color: var(--text-main);
-}
-
-.review-score {
   font-weight: 600;
-  color: var(--text-main);
-}
-
-.review-body {
   font-size: 0.9rem;
   color: var(--text-main);
 }
 
-.review-date {
-  margin-top: 0.25rem;
-  font-size: 0.7rem;
+.review-badge {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+.review-score {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.review-aspects {
+  font-size: 0.8rem;
   color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.review-comment {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  margin-bottom: 0.3rem;
+}
+
+.review-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Venue hero banner */
+.venue-hero {
+  border-radius: 1.25rem;
+  padding: 1.75rem 1.5rem;
+  margin-bottom: 1rem;
+  background: radial-gradient(circle at top left, #1d4ed8, #0f172a);
+  position: relative;
+  overflow: hidden;
+}
+
+.venue-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  mix-blend-mode: screen;
+}
+
+.venue-hero-overlay {
+  position: relative;
+  z-index: 1;
+}
+
+.venue-hero-tag {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(15, 23, 42, 0.65);
+  color: #e5e7eb;
+}
+
+.venue-hero-title {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+/* Venue header */
+.venue-header-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.venue-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  color: var(--text-main);
+}
+
+.venue-location {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.venue-address {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.venue-grade-badge {
+  border-radius: 1rem;
+  border: 2px solid;
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: var(--bg-elevated);
+}
+
+.venue-grade-letter {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.venue-grade-meta {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+}
+
+.venue-grade-label {
+  color: var(--text-muted);
+}
+
+.venue-grade-score {
+  font-weight: 500;
+}
+
+.venue-grade-chip {
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 2.5rem;
+  max-width: 4rem;
+  text-align: center;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sort-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Modal styles */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-card {
+  max-width: 420px;
+  width: 100%;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--bg-elevated, #ffffff);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+  margin: 1rem;
 }
 
 /* Back link */
@@ -668,15 +894,6 @@ body {
   text-decoration: underline;
 }
 
-/* Star rating */
-
-.rating-stars {
-  letter-spacing: 0.06em;
-  font-size: 0.8rem;
-  color: #fbbf24;
-  display: inline-block;
-  vertical-align: middle;
-}
 
 /* Utility Classes - Phase 4 */
 
@@ -909,8 +1126,8 @@ body {
 
 /* Recently card */
 .recently-card-item {
-  margin-bottom: 0.5rem;
   list-style: none;
+  margin-bottom: 0;
 }
 
 /* What we measure list */

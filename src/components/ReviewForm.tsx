@@ -13,6 +13,8 @@ import { ASPECTS } from '@/constants/aspects';
 import { ERROR_COLOR } from '@/constants/ui';
 import { calculateOverallScore, formatScore } from '@/lib/utils/scores';
 import { formatError } from '@/lib/utils/errors';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useProfile } from '@/hooks/useProfile';
 
 type ReviewFormProps = {
   venueId: string;
@@ -27,6 +29,8 @@ export function ReviewForm({
   existingReview,
   onSubmitted,
 }: ReviewFormProps) {
+  const { user: currentUser } = useCurrentUser();
+  const { profile } = useProfile(currentUser);
   const [reviewer, setReviewer] = useState('');
   const [comment, setComment] = useState('');
   const [aspects, setAspects] = useState<Record<AspectKey, number>>(DEFAULT_ASPECTS);
@@ -104,6 +108,7 @@ export function ReviewForm({
         vibe_score: aspects.vibe_score,
         staff_score: aspects.staff_score,
         layout_score: aspects.layout_score,
+        reviewer_role: profile?.role ?? null,
       };
 
       const { error } = await createReview(createData);

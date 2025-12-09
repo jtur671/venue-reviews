@@ -11,6 +11,7 @@ export type CreateReviewInput = {
   vibe_score: number;
   staff_score: number;
   layout_score: number;
+  reviewer_role?: 'artist' | 'fan' | 'both' | null;
 };
 
 export type UpdateReviewInput = {
@@ -39,7 +40,7 @@ export async function getReviewsByVenueId(venueId: string): Promise<{
   const { data, error } = await supabase
     .from('reviews')
     .select(
-      'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id'
+      'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role'
     )
     .eq('venue_id', venueId)
     .order('created_at', { ascending: false });
@@ -77,8 +78,9 @@ export async function createReview(input: CreateReviewInput): Promise<{
       vibe_score: input.vibe_score,
       staff_score: input.staff_score,
       layout_score: input.layout_score,
+      reviewer_role: input.reviewer_role ?? null,
     })
-    .select('id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id')
+    .select('id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role')
     .single();
 
   if (error) {

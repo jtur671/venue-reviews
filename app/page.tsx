@@ -126,20 +126,13 @@ export default function HomePage() {
 
           {hasQuery ? (
             <>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
-                  marginTop: '1rem',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                <div className="chip-row">
+              <div className="sort-controls">
+                <div className="chip-row" role="group" aria-label="Sort venues">
                   <button
                     type="button"
                     className={`chip ${sortBy === 'top-rated' ? 'chip--active' : ''}`}
                     onClick={() => setSortBy('top-rated')}
+                    aria-pressed={sortBy === 'top-rated'}
                   >
                     Top rated
                   </button>
@@ -147,6 +140,7 @@ export default function HomePage() {
                     type="button"
                     className={`chip ${sortBy === 'most-reviewed' ? 'chip--active' : ''}`}
                     onClick={() => setSortBy('most-reviewed')}
+                    aria-pressed={sortBy === 'most-reviewed'}
                   >
                     Most reviewed
                   </button>
@@ -154,6 +148,7 @@ export default function HomePage() {
                     type="button"
                     className={`chip ${sortBy === 'name' ? 'chip--active' : ''}`}
                     onClick={() => setSortBy('name')}
+                    aria-pressed={sortBy === 'name'}
                   >
                     A–Z
                   </button>

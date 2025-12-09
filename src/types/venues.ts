@@ -45,4 +45,5 @@ export type Review = {
   staff_score: number | null;
   layout_score: number | null;
   user_id?: string | null;
+  reviewer_role?: 'artist' | 'fan' | 'both' | null;
 };
