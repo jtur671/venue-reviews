@@ -44,13 +44,33 @@ export function VenueFilters({
         </div>
       )}
 
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search by venue or city…"
-        className="input"
-      />
+      <div style={{ position: 'relative' }}>
+        <span
+          style={{
+            position: 'absolute',
+            left: '0.75rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '1rem',
+            color: 'var(--text-muted)',
+            pointerEvents: 'none',
+          }}
+        >
+          🔍
+        </span>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search by venue or city…"
+          className="input"
+          style={{
+            paddingLeft: '2.5rem',
+            height: '2.75rem',
+            fontSize: '0.95rem',
+          }}
+        />
+      </div>
     </section>
   );
 }

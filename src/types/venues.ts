@@ -4,6 +4,7 @@ export type VenueWithStats = {
   city: string;
   avgScore: number | null;
   reviewCount: number;
+  latestReviewAt?: string | null;
 };
 
 export type RemoteVenue = {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { DraftVenue } from '@/types/venues';
 
@@ -10,6 +11,7 @@ type AddVenueFormProps = {
 };
 
 export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
+  const router = useRouter();
   const [newName, setNewName] = useState('');
   const [newCity, setNewCity] = useState('');
   const [newCountry, setNewCountry] = useState('USA');
@@ -41,17 +43,27 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
 
     setAdding(true);
 
-    const { error } = await supabase.from('venues').insert({
-      name: newName.trim(),
-      city: newCity.trim(),
-      country: newCountry.trim() || 'USA',
-      address: newAddress.trim() || null,
-    });
+    const { data, error } = await supabase
+      .from('venues')
+      .insert({
+        name: newName.trim(),
+        city: newCity.trim(),
+        country: newCountry.trim() || 'USA',
+        address: newAddress.trim() || null,
+      })
+      .select('id')
+      .single();
 
     if (error) {
       console.error('Error adding venue:', error);
       setAddError('Could not add venue. Please try again.');
       setAdding(false);
+      return;
+    }
+
+    const newId = data?.id;
+    if (newId) {
+      router.push(`/venues/${newId}`);
       return;
     }
 

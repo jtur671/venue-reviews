@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { StarRating } from '@/components/StarRating';
+import { RatingIcons } from '@/components/RatingIcons';
 import { VenueWithStats } from '@/types/venues';
 
 type VenueListProps = {
@@ -41,22 +41,29 @@ export function VenueList({ venues, loading, label }: VenueListProps) {
           <li key={v.id} style={{ marginBottom: '0.6rem' }}>
             <Link href={`/venues/${v.id}`} className="card venue-card">
               <div className="venue-card-main">
-                <div className="venue-name">{v.name}</div>
-                <div className="venue-city">{v.city}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <div className="venue-name">{v.name}</div>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-muted)',
+                      fontWeight: 400,
+                    }}
+                  >
+                    {v.city} • USA
+                  </span>
+                </div>
+                <div className="venue-city" style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}>
+                  {v.reviewCount > 0
+                    ? `${v.reviewCount} review${v.reviewCount === 1 ? '' : 's'} • Community report card`
+                    : 'No ratings yet'}
+                </div>
               </div>
-              <div className="venue-score">
-                {v.avgScore !== null ? (
-                  <>
-                    <div className="venue-score-main">
-                      <StarRating score={v.avgScore} /> {v.avgScore.toFixed(1)}/10
-                    </div>
-                    <div className="venue-score-sub">
-                      {v.reviewCount} review{v.reviewCount === 1 ? '' : 's'}
-                    </div>
-                  </>
-                ) : (
-                  <div className="venue-score-sub">No ratings yet</div>
-                )}
+              <div className="venue-score" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.1rem' }}>
+                <RatingIcons score={v.avgScore} />
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {v.avgScore?.toFixed(1) ?? '—'}/10
+                </div>
               </div>
             </Link>
           </li>
