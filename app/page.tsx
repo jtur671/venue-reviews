@@ -154,18 +154,18 @@ export default function HomePage() {
   }
 
   return (
-    <main className="bg-slate-50">
-      <div className="mx-auto w-full max-w-6xl">
+    <main className="bg-slate-50 overflow-x-hidden">
+      <div className="mx-auto w-full max-w-6xl px-0">
         {/* Section 1: Hero carousel with venue cards + grades */}
-        <section className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 pt-4 md:pt-0 pb-8 md:pb-0">
-          <div className="mb-4 md:mb-6">
+        <section className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 pt-4 md:pt-0 pb-8 md:pb-0 overflow-x-hidden w-full max-w-full">
+          <div className="mb-4 md:mb-6 w-full">
             <p className="text-xs font-medium tracking-wide text-sky-600 uppercase mb-1 md:mb-0.5">
               Live room report cards
             </p>
-            <h1 className="text-2xl md:text-4xl font-semibold text-slate-900 mb-2 md:mb-1">
+            <h1 className="text-2xl md:text-4xl font-semibold text-slate-900 mb-2 md:mb-1 break-words">
               Find the right room for your next show.
             </h1>
-            <p className="text-sm md:text-base text-slate-600 max-w-2xl mb-3 md:mb-2">
+            <p className="text-sm md:text-base text-slate-600 max-w-full md:max-w-2xl mb-3 md:mb-2 break-words">
               See real-world grades from artists and fans before you book. Sound,
               vibe, layout, and how the room actually treats you.
             </p>
@@ -238,11 +238,11 @@ export default function HomePage() {
         <section className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 py-8 md:py-0">
           <div className="w-full max-w-6xl mx-auto">
             {/* Header */}
-            <div className="mb-6 md:mb-12 text-center">
-              <h2 className="text-2xl md:text-4xl font-bold text-slate-900 mb-2 md:mb-3">
+            <div className="mb-6 md:mb-12 text-center w-full">
+              <h2 className="text-2xl md:text-4xl font-bold text-slate-900 mb-2 md:mb-3 break-words">
                 How it works
               </h2>
-              <p className="text-sm md:text-lg text-slate-600 max-w-2xl mx-auto">
+              <p className="text-sm md:text-lg text-slate-600 max-w-full md:max-w-2xl mx-auto break-words px-2">
                 Find the right room for your next show in three simple steps.
               </p>
             </div>
@@ -355,13 +355,13 @@ export default function HomePage() {
         </section>
 
         {/* Section 3: Search section */}
-        <section id="search-section" className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 py-8 md:py-0">
+        <section id="search-section" className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 py-8 md:py-0 overflow-x-hidden w-full">
           <div className="bg-white/90 backdrop-blur rounded-3xl border border-slate-100 px-6 py-8 md:px-10 md:py-10 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg md:text-xl font-semibold text-slate-900">
+          <div className="mb-4 w-full overflow-x-hidden">
+            <h2 className="text-lg md:text-xl font-semibold text-slate-900 break-words">
               Start with a search
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-600 break-words">
               Type a venue name or city, or pick a popular city to see real-world
               report cards.
             </p>

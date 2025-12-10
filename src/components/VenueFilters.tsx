@@ -20,7 +20,7 @@ export function VenueFilters({
   searchDisabled = false,
 }: VenueFiltersProps) {
   return (
-    <div>
+    <div className="w-full overflow-x-hidden">
       {cities.length > 0 && (
         <div className="section-header" style={{ marginBottom: '0.6rem' }}>
           <p className="section-subtitle">Recently rated</p>
@@ -28,7 +28,7 @@ export function VenueFilters({
       )}
 
       {cities.length > 0 && (
-        <div className="chip-row" style={{ marginBottom: '0.65rem' }}>
+        <div className="chip-row" style={{ marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <button
             type="button"
             onClick={() => onCityChange('All')}
@@ -49,7 +49,7 @@ export function VenueFilters({
         </div>
       )}
 
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
         <span
           style={{
             position: 'absolute',
@@ -59,6 +59,7 @@ export function VenueFilters({
             fontSize: '1rem',
             color: 'var(--text-muted)',
             pointerEvents: 'none',
+            zIndex: 1,
           }}
         >
           🔍
@@ -78,6 +79,9 @@ export function VenueFilters({
             fontSize: '0.95rem',
             opacity: searchDisabled ? 0.6 : 1,
             cursor: searchDisabled ? 'not-allowed' : 'text',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
           }}
         />
       </div>
@@ -89,7 +93,7 @@ export function VenueFilters({
               Popular cities
             </h3>
           </div>
-          <div className="chip-row">
+          <div className="chip-row" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
             {popularCityStats.map((c) => (
               <button
                 key={c.city}

@@ -42,6 +42,8 @@
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 html,
@@ -52,6 +54,9 @@ body {
   background: var(--bg);
   color: var(--text-main);
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
 }
 
 body {
@@ -78,6 +83,9 @@ body {
   flex-direction: column;
   background: transparent;
   color: var(--text-main);
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 .app-header {
@@ -236,6 +244,8 @@ body {
 .input,
 .textarea {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   border-radius: 0.6rem;
   border: 1px solid var(--input-border);
   background: var(--input-bg);
@@ -443,6 +453,9 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .chip {
@@ -454,6 +467,10 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition:
     background 0.15s ease,
     color 0.15s ease,
