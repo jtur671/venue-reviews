@@ -15,6 +15,7 @@ import { calculateOverallScore, formatScore } from '@/lib/utils/scores';
 import { formatError } from '@/lib/utils/errors';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProfile } from '@/hooks/useProfile';
+import { reviewsCache } from '@/lib/cache/reviewsCache';
 
 type ReviewFormProps = {
   venueId: string;
@@ -132,6 +133,10 @@ export function ReviewForm({
     }
 
     setSubmitting(false);
+    
+    // Invalidate reviews cache for this venue
+    reviewsCache.invalidate(venueId);
+    
     onSubmitted();
   }
 
@@ -157,6 +162,10 @@ export function ReviewForm({
     setComment('');
     setAspects(DEFAULT_ASPECTS);
     setDeleting(false);
+    
+    // Invalidate reviews cache for this venue
+    reviewsCache.invalidate(venueId);
+    
     onSubmitted();
   }
 

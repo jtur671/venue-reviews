@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { userCache } from '@/lib/cache/userCache';
 import { LoginModal } from '@/components/LoginModal';
 
 type CurrentUser = {
@@ -24,28 +25,55 @@ export function Header() {
 
   useEffect(() => {
     async function loadUser() {
+      // Try cache first for instant render
+      const cachedUser = userCache.getUser();
+      if (cachedUser) {
+        const cachedProfile = userCache.getProfile(cachedUser.id);
+        setUser({
+          ...cachedUser,
+          name: undefined,
+          avatarUrl: undefined,
+          displayName: cachedProfile?.display_name ?? undefined,
+        });
+        setLoading(false);
+      }
+
       const { data } = await supabase.auth.getUser();
       const u = data.user;
       if (!u) {
         setUser(null);
         setLoading(false);
+        userCache.setUser(null);
         return;
       }
 
-      // Fetch display name from profiles table
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', u.id)
-        .maybeSingle();
+      // Check cache for profile
+      const cachedProfile = userCache.getProfile(u.id);
+      
+      // Fetch display name from profiles table (use cache if available)
+      let profileData = cachedProfile;
+      if (!cachedProfile) {
+        const { data: fetchedProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', u.id)
+          .maybeSingle();
+        profileData = fetchedProfile ? { id: u.id, display_name: fetchedProfile.display_name, role: null, cachedAt: Date.now() } : null;
+        if (profileData) {
+          userCache.setProfile(u.id, profileData);
+        }
+      }
 
-      setUser({
+      const userData: CurrentUser = {
         id: u.id,
         email: u.email ?? undefined,
         name: u.user_metadata.full_name ?? undefined,
         avatarUrl: u.user_metadata.picture ?? u.user_metadata.avatar_url ?? undefined,
         displayName: profileData?.display_name ?? undefined,
-      });
+      };
+
+      userCache.setUser(userData);
+      setUser(userData);
       setLoading(false);
     }
 
@@ -61,20 +89,30 @@ export function Header() {
         return;
       }
 
-      // Fetch display name from profiles table
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', u.id)
-        .maybeSingle();
+      // Check cache for profile
+      let profileData = userCache.getProfile(u.id);
+      if (!profileData) {
+        const { data: fetchedProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', u.id)
+          .maybeSingle();
+        profileData = fetchedProfile ? { id: u.id, display_name: fetchedProfile.display_name, role: null, cachedAt: Date.now() } : null;
+        if (profileData) {
+          userCache.setProfile(u.id, profileData);
+        }
+      }
 
-      setUser({
+      const userData: CurrentUser = {
         id: u.id,
         email: u.email ?? undefined,
         name: u.user_metadata.full_name ?? undefined,
         avatarUrl: u.user_metadata.picture ?? u.user_metadata.avatar_url ?? undefined,
         displayName: profileData?.display_name ?? undefined,
-      });
+      };
+
+      userCache.setUser(userData);
+      setUser(userData);
 
       // Redirect to account page on sign in or sign up
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && u.email) {
@@ -88,12 +126,21 @@ export function Header() {
     // Also listen for profile updates - refresh when page becomes visible
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
-        loadUser();
+        // Only refresh if cache is stale (> 1 minute old)
+        const cached = userCache.getUser();
+        if (!cached || Date.now() - cached.cachedAt > 60 * 1000) {
+          loadUser();
+        }
       }
     }
 
     // Listen for custom event when profile is updated
     function handleProfileUpdate() {
+      // Invalidate cache and reload
+      const currentUser = userCache.getUser();
+      if (currentUser) {
+        userCache.setProfile(currentUser.id, null); // Invalidate profile cache
+      }
       loadUser();
     }
 
@@ -113,6 +160,10 @@ export function Header() {
       console.error('Error signing out:', error);
       return;
     }
+    
+    // Clear all caches on sign out
+    userCache.clear();
+    
     window.location.href = '/';
   }
 

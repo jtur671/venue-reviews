@@ -20,13 +20,12 @@ export function VenueFilters({
   searchDisabled = false,
 }: VenueFiltersProps) {
   return (
-    <section
-      className="section card--soft"
-      style={{ padding: '0.85rem 1rem' }}
-    >
-      <div className="section-header" style={{ marginBottom: '0.6rem' }}>
-        <p className="section-subtitle">Recently rated</p>
-      </div>
+    <div>
+      {cities.length > 0 && (
+        <div className="section-header" style={{ marginBottom: '0.6rem' }}>
+          <p className="section-subtitle">Recently rated</p>
+        </div>
+      )}
 
       {cities.length > 0 && (
         <div className="chip-row" style={{ marginBottom: '0.65rem' }}>
@@ -104,6 +103,6 @@ export function VenueFilters({
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

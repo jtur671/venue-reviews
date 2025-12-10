@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { userCache } from '@/lib/cache/userCache';
 
 type UserRole = 'artist' | 'fan';
 
@@ -47,6 +48,15 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
       // Role wasn't set - likely because it was already set (immutable)
       setOpen(false);
       return;
+    }
+    
+    // Update cache
+    const cachedProfile = userCache.getProfile(profileId);
+    if (cachedProfile) {
+      userCache.setProfile(profileId, {
+        ...cachedProfile,
+        role,
+      });
     }
     
     onRoleSet(role);

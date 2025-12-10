@@ -4,6 +4,7 @@ import { useAnonUser } from '@/hooks/useAnonUser';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/lib/supabaseClient';
+import { userCache } from '@/lib/cache/userCache';
 
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
@@ -22,10 +23,14 @@ vi.mock('@/lib/supabaseClient', () => ({
 describe('Custom Hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear cache before each test
+    userCache.clear();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Clear cache after each test
+    userCache.clear();
   });
 
   describe('useAnonUser', () => {

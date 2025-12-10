@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
 import { RoleChoiceModal } from '@/components/RoleChoiceModal';
 import { DeleteAccountModal } from '@/components/DeleteAccountModal';
+import { userCache } from '@/lib/cache/userCache';
 
 type UserRole = 'artist' | 'fan';
 
@@ -198,6 +199,14 @@ export default function AccountPage() {
         prev ? { ...prev, display_name: trimmed } : prev
       );
       setSaveMessage('Saved');
+      
+      // Update cache with new display name
+      if (profile) {
+        userCache.setProfile(profile.id, {
+          ...profile,
+          display_name: next.trim() || null,
+        });
+      }
       
       // Dispatch custom event to notify Header component to refresh
       if (typeof window !== 'undefined') {

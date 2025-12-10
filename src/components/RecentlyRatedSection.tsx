@@ -10,14 +10,13 @@ type RecentlyRatedSectionProps = {
 
 export const RecentlyRatedSection = memo(function RecentlyRatedSection({ venues }: RecentlyRatedSectionProps) {
   return (
-    <section className="section">
-      <div className="card hero-card">
-        <div className="section-header section-header-spaced">
-          <h2 className="section-title">Recently rated</h2>
-          <p className="section-subtitle text-sm mt-sm">
-            Fresh report cards from the last week.
-          </p>
-        </div>
+    <div>
+      <div className="section-header section-header-spaced">
+        <h2 className="section-title">Recently rated</h2>
+        <p className="section-subtitle text-sm mt-sm">
+          Fresh report cards from the last week.
+        </p>
+      </div>
         {venues.length ? (
           <ul className="venue-list venue-list--grid list-reset">
             {venues.map((v) => {
@@ -56,7 +55,6 @@ export const RecentlyRatedSection = memo(function RecentlyRatedSection({ venues 
         ) : (
           <EmptyState message="Ratings will appear here as the community weighs in." />
         )}
-      </div>
-    </section>
+    </div>
   );
 });

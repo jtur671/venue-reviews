@@ -3,13 +3,18 @@ import { getVenueById, type Venue } from '@/lib/services/venueService';
 import { useAnonUser } from './useAnonUser';
 
 export function useVenue(venueId: string | undefined) {
-  const { user, loading: userLoading } = useAnonUser();
+  // Don't wait for user - venue data is independent
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadVenue = useCallback(async () => {
-    if (!venueId || userLoading || !user) return;
+    if (!venueId) {
+      setVenue(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -24,7 +29,7 @@ export function useVenue(venueId: string | undefined) {
     }
 
     setLoading(false);
-  }, [venueId, userLoading, user]);
+  }, [venueId]);
 
   useEffect(() => {
     loadVenue();
