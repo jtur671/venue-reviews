@@ -42,25 +42,31 @@ export function ReviewForm({
   useEffect(() => {
     if (!existingReview) {
       // Reset form when no existing review
-      setReviewer('');
-      setComment('');
-      setAspects({
-        sound_score: 7,
-        vibe_score: 7,
-        staff_score: 7,
-        layout_score: 7,
-      });
+      // Use setTimeout to avoid calling setState synchronously in effect
+      setTimeout(() => {
+        setReviewer('');
+        setComment('');
+        setAspects({
+          sound_score: 7,
+          vibe_score: 7,
+          staff_score: 7,
+          layout_score: 7,
+        });
+      }, 0);
       return;
     }
 
-    setReviewer(existingReview.reviewer ?? existingReview.reviewer_name ?? '');
-    setComment(existingReview.comment ?? '');
-    setAspects({
-      sound_score: existingReview.sound_score ?? DEFAULT_ASPECTS.sound_score,
-      vibe_score: existingReview.vibe_score ?? DEFAULT_ASPECTS.vibe_score,
-      staff_score: existingReview.staff_score ?? DEFAULT_ASPECTS.staff_score,
-      layout_score: existingReview.layout_score ?? DEFAULT_ASPECTS.layout_score,
-    });
+    // Use setTimeout to avoid calling setState synchronously in effect
+    setTimeout(() => {
+      setReviewer(existingReview.reviewer ?? existingReview.reviewer_name ?? '');
+      setComment(existingReview.comment ?? '');
+      setAspects({
+        sound_score: existingReview.sound_score ?? DEFAULT_ASPECTS.sound_score,
+        vibe_score: existingReview.vibe_score ?? DEFAULT_ASPECTS.vibe_score,
+        staff_score: existingReview.staff_score ?? DEFAULT_ASPECTS.staff_score,
+        layout_score: existingReview.layout_score ?? DEFAULT_ASPECTS.layout_score,
+      });
+    }, 0);
   }, [existingReview]);
 
   function handleAspectChange(key: AspectKey, value: number) {

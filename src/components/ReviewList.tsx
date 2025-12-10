@@ -50,7 +50,7 @@ export const ReviewList = memo(function ReviewList({ myReview, reviews }: Review
         <h2 className="section-title">Community reviews</h2>
         {hasAny && (
           <p className="section-subtitle">
-            Real experiences from people who've been in the room.
+            Real experiences from people who&apos;ve been in the room.
           </p>
         )}
       </div>

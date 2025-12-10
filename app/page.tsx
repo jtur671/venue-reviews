@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { VenueFilters } from '@/components/VenueFilters';
 import { AddVenueForm } from '@/components/AddVenueForm';
 import { VenueList } from '@/components/VenueList';
@@ -11,6 +12,7 @@ import { DraftVenue, RemoteVenue } from '@/types/venues';
 import { useVenues } from '@/hooks/useVenues';
 import { useVenueStats } from '@/hooks/useVenueStats';
 import { useRemoteSearch } from '@/hooks/useRemoteSearch';
+import { createVenue } from '@/lib/services/venueService';
 
 type FeaturedVenue = {
   id: string;
@@ -54,10 +56,12 @@ const FEATURED_VENUES: FeaturedVenue[] = [
 type SortBy = 'top-rated' | 'most-reviewed' | 'name';
 
 export default function HomePage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState<string>('All');
   const [sortBy, setSortBy] = useState<SortBy>('top-rated');
   const [draftVenue, setDraftVenue] = useState<DraftVenue>(null);
+  const [creatingVenue, setCreatingVenue] = useState(false);
   const addVenueRef = useRef<HTMLDivElement | null>(null);
 
   const { venues, loading, refetch: loadVenues } = useVenues();
@@ -134,16 +138,54 @@ export default function HomePage() {
   function handleExampleCity(city: string) {
     setSearch('');
     setSelectedCity(city);
+    // Clear any draft venue when selecting a city
+    setDraftVenue(null);
   }
 
-  function handleSelectRemoteVenue(v: RemoteVenue) {
-    setDraftVenue({
-      name: v.name,
-      city: v.city,
-      country: v.country,
-      address: v.address,
-    });
-    addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
+  async function handleSelectRemoteVenue(v: RemoteVenue) {
+    // Immediately create the venue and navigate to its review page
+    setCreatingVenue(true);
+    
+    try {
+      const { data, error } = await createVenue({
+        name: v.name,
+        city: v.city,
+        country: v.country || 'USA',
+        address: v.address || null,
+        photo_url: v.photoUrl || null,
+        google_place_id: v.googlePlaceId || null,
+      });
+
+      if (error) {
+        console.error('Error creating venue:', error);
+        // Fallback to old behavior if creation fails
+        setDraftVenue({
+          name: v.name,
+          city: v.city,
+          country: v.country,
+          address: v.address,
+          photoUrl: v.photoUrl,
+          googlePlaceId: v.googlePlaceId,
+        });
+        addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setCreatingVenue(false);
+        return;
+      }
+
+      if (data?.id) {
+        console.log('Venue created successfully, navigating to:', data.id);
+        // Small delay to ensure database is ready, then navigate
+        setTimeout(() => {
+          router.push(`/venues/${data.id}`);
+        }, 100);
+        return;
+      }
+      
+      setCreatingVenue(false);
+    } catch (err) {
+      console.error('Unexpected error creating venue:', err);
+      setCreatingVenue(false);
+    }
   }
 
   function scrollToSearch() {
@@ -355,60 +397,63 @@ export default function HomePage() {
         </section>
 
         {/* Section 3: Search section */}
-        <section id="search-section" className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 py-8 md:py-0 overflow-x-hidden w-full">
-          <div className="backdrop-blur rounded-3xl border px-6 py-8 md:px-10 md:py-10 shadow-sm" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', opacity: 0.9 }}>
-          <div className="mb-4 w-full overflow-x-hidden">
-            <h2 className="text-lg md:text-xl font-semibold break-words" style={{ color: 'var(--text-main)' }}>
-              Start with a search
-            </h2>
-            <p className="mt-1 text-sm break-words" style={{ color: 'var(--text-muted)' }}>
-              Type a venue name or city, or pick a popular city to see real-world
-              report cards.
-            </p>
-          </div>
+        <section id="search-section" className="snap-start min-h-screen md:h-screen flex flex-col justify-start px-4 py-8 md:py-0 overflow-x-hidden w-full" style={{ scrollSnapStop: 'always' }}>
+          <div className="backdrop-blur rounded-3xl border px-6 py-8 md:px-10 md:py-10 shadow-sm w-full max-w-full flex flex-col" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', opacity: 0.9, maxHeight: '100%', overflow: 'hidden' }}>
+            <div className="mb-4 w-full overflow-x-hidden flex-shrink-0">
+              <h2 className="text-lg md:text-xl font-semibold break-words" style={{ color: 'var(--text-main)' }}>
+                Start with a search
+              </h2>
+              <p className="mt-1 text-sm break-words" style={{ color: 'var(--text-muted)' }}>
+                Type a venue name or city, or pick a popular city to see real-world
+                report cards.
+              </p>
+            </div>
 
-          <VenueFilters
-            cities={popularCities}
-            selectedCity={selectedCity}
-            onCityChange={setSelectedCity}
-            search={search}
-            onSearchChange={setSearch}
-            popularCityStats={popularCityStats}
-            onPopularCityClick={handleExampleCity}
-            searchDisabled={selectedCity !== 'All'}
-          />
+            <div className="flex-shrink-0">
+              <VenueFilters
+                cities={popularCities}
+                selectedCity={selectedCity}
+                onCityChange={setSelectedCity}
+                search={search}
+                onSearchChange={setSearch}
+                popularCityStats={popularCityStats}
+                onPopularCityClick={handleExampleCity}
+                searchDisabled={selectedCity !== 'All'}
+              />
+            </div>
 
-          {hasQuery ? (
-            <>
-              <div className="sort-controls" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-                <div className="chip-row" role="group" aria-label="Sort venues">
-                  <button
-                    type="button"
-                    className={`chip ${sortBy === 'top-rated' ? 'chip--active' : ''}`}
-                    onClick={() => setSortBy('top-rated')}
-                    aria-pressed={sortBy === 'top-rated'}
-                  >
-                    Top rated
-                  </button>
-                  <button
-                    type="button"
-                    className={`chip ${sortBy === 'most-reviewed' ? 'chip--active' : ''}`}
-                    onClick={() => setSortBy('most-reviewed')}
-                    aria-pressed={sortBy === 'most-reviewed'}
-                  >
-                    Most reviewed
-                  </button>
-                  <button
-                    type="button"
-                    className={`chip ${sortBy === 'name' ? 'chip--active' : ''}`}
-                    onClick={() => setSortBy('name')}
-                    aria-pressed={sortBy === 'name'}
-                  >
-                    A–Z
-                  </button>
-                </div>
-              </div>
-              <VenueList venues={filteredVenues} loading={loading} label={communityLabel} />
+            <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+              {hasQuery ? (
+                <>
+                  <div className="sort-controls" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+                    <div className="chip-row" role="group" aria-label="Sort venues">
+                      <button
+                        type="button"
+                        className={`chip ${sortBy === 'top-rated' ? 'chip--active' : ''}`}
+                        onClick={() => setSortBy('top-rated')}
+                        aria-pressed={sortBy === 'top-rated'}
+                      >
+                        Top rated
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip ${sortBy === 'most-reviewed' ? 'chip--active' : ''}`}
+                        onClick={() => setSortBy('most-reviewed')}
+                        aria-pressed={sortBy === 'most-reviewed'}
+                      >
+                        Most reviewed
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip ${sortBy === 'name' ? 'chip--active' : ''}`}
+                        onClick={() => setSortBy('name')}
+                        aria-pressed={sortBy === 'name'}
+                      >
+                        A–Z
+                      </button>
+                    </div>
+                  </div>
+                  <VenueList venues={filteredVenues} loading={loading} label={communityLabel} />
               <RemoteSearchResults
                 results={remoteResults}
                 loading={remoteLoading}
@@ -416,16 +461,18 @@ export default function HomePage() {
                 hasQuery={hasQuery}
                 onSelectVenue={handleSelectRemoteVenue}
                 existingVenueLookup={existingVenueLookup}
+                creatingVenue={creatingVenue}
               />
-              <div ref={addVenueRef}>
-                <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
-              </div>
-            </>
-          ) : (
-            <div style={{ marginTop: '1rem' }}>
-              <RecentlyRatedSection venues={recentlyRated} />
+                  <div ref={addVenueRef}>
+                    <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
+                  </div>
+                </>
+              ) : (
+                <div style={{ marginTop: '1rem' }}>
+                  <RecentlyRatedSection venues={recentlyRated} />
+                </div>
+              )}
             </div>
-          )}
           </div>
         </section>
       </div>

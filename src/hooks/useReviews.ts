@@ -36,7 +36,7 @@ export function useReviews(venueId: string | undefined) {
         setReviews(freshReviews);
         setLoading(false);
         setError(null);
-      } catch (err) {
+      } catch {
         setError('Failed to load reviews');
         setLoading(false);
       }

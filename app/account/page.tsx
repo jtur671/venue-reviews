@@ -73,7 +73,24 @@ export default function AccountPage() {
       .order('created_at', { ascending: false });
 
     if (!reviewError && reviewData) {
-      const processedReviews = (reviewData ?? []).map((r: any) => ({
+      type SupabaseReviewRow = {
+        id: string;
+        score: number | null;
+        reviewer_role: UserRole | null;
+        created_at: string | null;
+        venues: {
+          id: string;
+          name: string;
+          city: string | null;
+          country: string | null;
+        } | {
+          id: string;
+          name: string;
+          city: string | null;
+          country: string | null;
+        }[] | null;
+      };
+      const processedReviews = (reviewData ?? []).map((r: SupabaseReviewRow) => ({
         ...r,
         venues: Array.isArray(r.venues) ? r.venues[0] || null : r.venues || null,
       }));
@@ -170,7 +187,9 @@ export default function AccountPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     // Also reload when component mounts/focuses (user navigates back)
     if (userEmail) {
-      reloadReviews();
+      setTimeout(() => {
+        reloadReviews();
+      }, 0);
     }
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getVenueById, type Venue } from '@/lib/services/venueService';
-import { useAnonUser } from './useAnonUser';
 
 export function useVenue(venueId: string | undefined) {
   // Don't wait for user - venue data is independent
@@ -32,8 +31,19 @@ export function useVenue(venueId: string | undefined) {
   }, [venueId]);
 
   useEffect(() => {
-    loadVenue();
-  }, [loadVenue]);
+    if (!venueId) {
+      // Use setTimeout to avoid calling setState synchronously in effect
+      setTimeout(() => {
+        setVenue(null);
+        setLoading(false);
+      }, 0);
+      return;
+    }
+    // Load venue immediately
+    setTimeout(() => {
+      loadVenue();
+    }, 0);
+  }, [loadVenue, venueId]);
 
   return {
     venue,

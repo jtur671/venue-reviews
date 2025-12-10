@@ -8,6 +8,8 @@ export type Venue = {
   city: string;
   country: string;
   address: string | null;
+  photo_url?: string | null;
+  google_place_id?: string | null;
 };
 
 export type CreateVenueInput = {
@@ -15,6 +17,8 @@ export type CreateVenueInput = {
   city: string;
   country?: string;
   address?: string | null;
+  photo_url?: string | null;
+  google_place_id?: string | null;
 };
 
 export type VenueServiceError = {
@@ -58,7 +62,7 @@ export async function getVenueById(id: string): Promise<{
 }> {
   const { data, error } = await supabase
     .from('venues')
-    .select('id, name, city, country, address')
+    .select('id, name, city, country, address, photo_url, google_place_id')
     .eq('id', id)
     .single();
 
@@ -90,6 +94,8 @@ export async function createVenue(input: CreateVenueInput): Promise<{
       city: input.city.trim(),
       country: input.country?.trim() || 'USA',
       address: input.address?.trim() || null,
+      photo_url: input.photo_url || null,
+      google_place_id: input.google_place_id || null,
     })
     .select('id')
     .single();

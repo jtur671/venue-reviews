@@ -13,6 +13,8 @@ export type RemoteVenue = {
   city: string;
   country: string;
   address: string;
+  photoUrl?: string | null;
+  googlePlaceId?: string;
 };
 
 export type DraftVenue = {
@@ -20,6 +22,8 @@ export type DraftVenue = {
   city?: string;
   country?: string;
   address?: string;
+  photoUrl?: string | null;
+  googlePlaceId?: string;
 } | null;
 
 export type AspectKey = 'sound_score' | 'vibe_score' | 'staff_score' | 'layout_score';

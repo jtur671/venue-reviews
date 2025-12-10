@@ -44,7 +44,7 @@ class UserCache {
               return cached;
             }
           }
-        } catch (e) {
+        } catch {
           // Ignore localStorage errors
         }
       }
@@ -66,7 +66,7 @@ class UserCache {
       if (typeof window !== 'undefined') {
         try {
           localStorage.removeItem(STORAGE_KEY_USER);
-        } catch (e) {
+        } catch {
           // Ignore
         }
       }
@@ -82,7 +82,7 @@ class UserCache {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(cached));
-      } catch (e) {
+      } catch {
         // Ignore localStorage errors (quota exceeded, etc.)
       }
     }
@@ -107,7 +107,7 @@ class UserCache {
           return cached;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignore
     }
 
@@ -123,7 +123,7 @@ class UserCache {
       if (typeof window !== 'undefined') {
         try {
           localStorage.removeItem(`${STORAGE_KEY_PROFILE}_${userId}`);
-        } catch (e) {
+        } catch {
           // Ignore
         }
       }
@@ -139,7 +139,7 @@ class UserCache {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(`${STORAGE_KEY_PROFILE}_${userId}`, JSON.stringify(cached));
-      } catch (e) {
+      } catch {
         // Ignore
       }
     }
@@ -163,7 +163,7 @@ class UserCache {
             localStorage.removeItem(key);
           }
         });
-      } catch (e) {
+      } catch {
         // Ignore
       }
     }

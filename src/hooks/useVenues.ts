@@ -28,8 +28,13 @@ export function useVenues() {
   }, [userLoading, user]);
 
   useEffect(() => {
-    loadVenues();
-  }, [loadVenues]);
+    if (userLoading || !user) return;
+    // Use setTimeout to avoid calling setState synchronously in effect
+    const timeoutId = setTimeout(() => {
+      loadVenues();
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [loadVenues, userLoading, user]);
 
   return {
     venues,

@@ -22,15 +22,22 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [googlePlaceId, setGooglePlaceId] = useState<string | undefined>(undefined);
+
   useEffect(() => {
     if (!draftVenue) return;
 
-    setNewName(draftVenue.name ?? '');
-    setNewCity(draftVenue.city ?? '');
-    setNewCountry(draftVenue.country ?? 'USA');
-    setNewAddress(draftVenue.address ?? '');
-    setShowAddForm(true);
-    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => {
+      setNewName(draftVenue.name ?? '');
+      setNewCity(draftVenue.city ?? '');
+      setNewCountry(draftVenue.country ?? 'USA');
+      setNewAddress(draftVenue.address ?? '');
+      setPhotoUrl(draftVenue.photoUrl ?? null);
+      setGooglePlaceId(draftVenue.googlePlaceId);
+      setShowAddForm(true);
+      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
   }, [draftVenue]);
 
   async function handleAddVenue(e: FormEvent) {
@@ -49,6 +56,8 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
       city: newCity,
       country: newCountry,
       address: newAddress || null,
+      photo_url: photoUrl,
+      google_place_id: googlePlaceId,
     });
 
     if (error) {
@@ -66,6 +75,8 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
     setNewCity('');
     setNewCountry('USA');
     setNewAddress('');
+    setPhotoUrl(null);
+    setGooglePlaceId(undefined);
 
     setAdding(false);
     onAdded();

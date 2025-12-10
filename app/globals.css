@@ -152,6 +152,25 @@ body {
   }
 }
 
+/* Prevent scroll snapping from interfering with input focus */
+input:focus,
+textarea:focus {
+  scroll-margin: 0;
+  outline-offset: 2px;
+}
+
+/* Ensure search section stays visible when input is focused - disable snap temporarily */
+@media (min-width: 768px) {
+  #search-section:has(input:focus) {
+    scroll-snap-align: none;
+  }
+  
+  /* Re-enable snap when not focused */
+  #search-section:not(:has(input:focus)) {
+    scroll-snap-align: start;
+  }
+}
+
 .app-shell {
   display: flex;
   flex-direction: column;

@@ -19,8 +19,11 @@ export function ThemeToggle() {
     }
 
     document.documentElement.dataset.theme = initial;
-    setTheme(initial);
-    setMounted(true);
+    // Use setTimeout to avoid calling setState synchronously in effect
+    setTimeout(() => {
+      setTheme(initial);
+      setMounted(true);
+    }, 0);
   }, []);
 
   function toggleTheme() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { userCache } from '@/lib/cache/userCache';
 
@@ -14,11 +14,29 @@ type Props = {
 
 export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
   // Only show modal if role is null (immutable once set)
-  const [open, setOpen] = useState(initialRole === null);
+  // Use state to track if modal should be shown - once shown, keep it open until role is selected
+  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [roleSelected, setRoleSelected] = useState(false);
 
-  // Don't show if role is already set (immutable)
-  if (!open || initialRole !== null) return null;
+  // Initialize: if role is null, show the modal
+  useEffect(() => {
+    if (initialRole === null && !roleSelected) {
+      setTimeout(() => {
+        setOpen(true);
+      }, 0);
+    } else if (initialRole !== null) {
+      // Role is set - close the modal
+      setTimeout(() => {
+        setOpen(false);
+      }, 0);
+    }
+  }, [initialRole, roleSelected]);
+
+  // Don't show if role is already set (immutable) or if user has selected a role
+  if (roleSelected || initialRole !== null || !open) {
+    return null;
+  }
 
   async function chooseRole(role: UserRole) {
     setSaving(true);
@@ -39,6 +57,7 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
       // If no rows were updated (role already set), close modal silently
       // This handles the immutable constraint
       console.error('Error setting role (may be immutable):', error);
+      setRoleSelected(true);
       setOpen(false);
       return;
     }
@@ -46,9 +65,13 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
     // Verify the role was actually set
     if (data.role !== role) {
       // Role wasn't set - likely because it was already set (immutable)
+      setRoleSelected(true);
       setOpen(false);
       return;
     }
+    
+    // Mark that role has been selected - this prevents modal from reopening
+    setRoleSelected(true);
     
     // Update cache
     const cachedProfile = userCache.getProfile(profileId);

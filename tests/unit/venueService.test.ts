@@ -138,7 +138,7 @@ describe('Venue Service', () => {
       expect(result.error).toBeNull();
       expect(result.data).toEqual(mockVenue);
       expect(mockFrom).toHaveBeenCalledWith('venues');
-      expect(mockSelect).toHaveBeenCalledWith('id, name, city, country, address');
+      expect(mockSelect).toHaveBeenCalledWith('id, name, city, country, address, photo_url, google_place_id');
       expect(mockEq).toHaveBeenCalledWith('id', 'venue-1');
     });
 
@@ -211,6 +211,8 @@ describe('Venue Service', () => {
         city: 'New City',
         country: 'USA',
         address: '123 Main St',
+        photo_url: null,
+        google_place_id: null,
       });
     });
 
@@ -239,6 +241,8 @@ describe('Venue Service', () => {
         city: 'Trimmed City',
         country: 'USA',
         address: '123 Main St',
+        photo_url: null,
+        google_place_id: null,
       });
     });
 
@@ -265,6 +269,8 @@ describe('Venue Service', () => {
         city: 'New City',
         country: 'USA',
         address: null,
+        photo_url: null,
+        google_place_id: null,
       });
     });
 
@@ -292,6 +298,8 @@ describe('Venue Service', () => {
         city: 'New City',
         country: 'USA',
         address: null,
+        photo_url: null,
+        google_place_id: null,
       });
     });
 

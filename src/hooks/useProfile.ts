@@ -11,7 +11,10 @@ export type Profile = {
   role: UserRole | null;
 };
 
-export function useProfile(user: CurrentUser | null) {
+// Allow both CurrentUser and simple { id: string } for anonymous users
+type UserForProfile = CurrentUser | { id: string } | null;
+
+export function useProfile(user: UserForProfile) {
   // Try to get cached profile immediately
   const cachedProfile = user ? userCache.getProfile(user.id) : null;
   const [profile, setProfile] = useState<Profile | null>(cachedProfile);
@@ -19,8 +22,11 @@ export function useProfile(user: CurrentUser | null) {
 
   useEffect(() => {
     if (!user) {
-      setProfile(null);
-      setLoading(false);
+      // Use setTimeout to avoid calling setState synchronously in effect
+      setTimeout(() => {
+        setProfile(null);
+        setLoading(false);
+      }, 0);
       return;
     }
 

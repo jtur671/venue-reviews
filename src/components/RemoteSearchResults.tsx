@@ -13,6 +13,7 @@ type RemoteSearchResultsProps = {
   hasQuery: boolean;
   onSelectVenue: (venue: RemoteVenue) => void;
   existingVenueLookup: Record<string, string>;
+  creatingVenue?: boolean;
 };
 
 export function RemoteSearchResults({
@@ -22,6 +23,7 @@ export function RemoteSearchResults({
   hasQuery,
   onSelectVenue,
   existingVenueLookup,
+  creatingVenue = false,
 }: RemoteSearchResultsProps) {
   if (!hasQuery) return null;
 
@@ -59,47 +61,77 @@ export function RemoteSearchResults({
 
             return (
               <li key={v.id} style={{ marginBottom: '0.5rem' }}>
-                <div className="card venue-card">
-                  <div className="venue-card-main">
-                    <div className="venue-name">{v.name}</div>
-                    <div className="venue-city">
-                      {[v.city, v.country].filter(Boolean).join(', ')}
-                    </div>
-                    {v.address && (
-                      <div
-                        className="venue-header-address"
-                        style={{ marginTop: '0.1rem' }}
-                      >
-                        {v.address}
+                {existingId ? (
+                  <Link href={`/venues/${existingId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div className="card venue-card" style={{ cursor: 'pointer' }}>
+                      <div className="venue-card-main">
+                        <div className="venue-name">{v.name}</div>
+                        <div className="venue-city">
+                          {[v.city, v.country].filter(Boolean).join(', ')}
+                        </div>
+                        {v.address && (
+                          <div
+                            className="venue-header-address"
+                            style={{ marginTop: '0.1rem' }}
+                          >
+                            {v.address}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="venue-score" style={{ textAlign: 'right' }}>
-                    {existingId ? (
-                      <Link
-                        href={`/venues/${existingId}`}
-                        className="btn btn--primary"
-                        style={{
-                          fontSize: '0.75rem',
-                          paddingInline: '0.75rem',
-                          background: `linear-gradient(135deg, ${SUCCESS_COLOR_START}, ${SUCCESS_COLOR_END})`,
-                        }}
-                      >
-                        View report card
-                      </Link>
-                    ) : (
+                      <div className="venue-score" style={{ textAlign: 'right' }}>
+                        <span
+                          className="btn btn--primary"
+                          style={{
+                            fontSize: '0.75rem',
+                            paddingInline: '0.75rem',
+                            background: `linear-gradient(135deg, ${SUCCESS_COLOR_START}, ${SUCCESS_COLOR_END})`,
+                            display: 'inline-block',
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View report card
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  <div 
+                    className="card venue-card" 
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => !creatingVenue && onSelectVenue(v)}
+                  >
+                    <div className="venue-card-main">
+                      <div className="venue-name">{v.name}</div>
+                      <div className="venue-city">
+                        {[v.city, v.country].filter(Boolean).join(', ')}
+                      </div>
+                      {v.address && (
+                        <div
+                          className="venue-header-address"
+                          style={{ marginTop: '0.1rem' }}
+                        >
+                          {v.address}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="venue-score" style={{ textAlign: 'right' }}>
                       <button
                         type="button"
                         className="btn btn--ghost"
-                        onClick={() => onSelectVenue(v)}
-                        style={{ fontSize: '0.75rem', paddingInline: '0.75rem' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectVenue(v);
+                        }}
+                        disabled={creatingVenue}
+                        style={{ fontSize: '0.75rem', paddingInline: '0.75rem', opacity: creatingVenue ? 0.6 : 1 }}
                       >
-                        Create report card
+                        {creatingVenue ? 'Creating...' : 'Be the first to grade it'}
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
               </li>
             );
           })}
