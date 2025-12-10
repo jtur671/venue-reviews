@@ -154,18 +154,18 @@ export default function HomePage() {
   }
 
   return (
-    <main className="bg-slate-50 overflow-x-hidden">
+    <main className="overflow-x-hidden" style={{ background: 'var(--bg)' }}>
       <div className="mx-auto w-full max-w-6xl px-0">
         {/* Section 1: Hero carousel with venue cards + grades */}
         <section className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 pt-4 md:pt-0 pb-8 md:pb-0 overflow-x-hidden w-full max-w-full">
           <div className="mb-4 md:mb-6 w-full">
-            <p className="text-xs font-medium tracking-wide text-sky-600 uppercase mb-1 md:mb-0.5">
+            <p className="text-xs font-medium tracking-wide uppercase mb-1 md:mb-0.5" style={{ color: '#0ea5e9' }}>
               Live room report cards
             </p>
-            <h1 className="text-2xl md:text-4xl font-semibold text-slate-900 mb-2 md:mb-1 break-words">
+            <h1 className="text-2xl md:text-4xl font-semibold mb-2 md:mb-1 break-words" style={{ color: 'var(--text-main)' }}>
               Find the right room for your next show.
             </h1>
-            <p className="text-sm md:text-base text-slate-600 max-w-full md:max-w-2xl mb-3 md:mb-2 break-words">
+            <p className="text-sm md:text-base max-w-full md:max-w-2xl mb-3 md:mb-2 break-words" style={{ color: 'var(--text-muted)' }}>
               See real-world grades from artists and fans before you book. Sound,
               vibe, layout, and how the room actually treats you.
             </p>
@@ -201,8 +201,8 @@ export default function HomePage() {
                     {/* Large Grade Badge - Top Right */}
                     <div className="absolute top-3 right-3 md:top-5 md:right-5">
                       <div className="flex flex-col items-end gap-1.5 md:gap-2">
-                        <div className="inline-flex items-center justify-center rounded-xl md:rounded-2xl bg-white/95 backdrop-blur-sm px-3 py-2 md:px-5 md:py-4 shadow-2xl border-2 border-amber-400/30">
-                          <span className="text-[10px] md:text-xs font-semibold text-slate-600 uppercase tracking-wider mr-2 md:mr-3">
+                        <div className="inline-flex items-center justify-center rounded-xl md:rounded-2xl backdrop-blur-sm px-3 py-2 md:px-5 md:py-4 shadow-2xl border-2 border-amber-400/30" style={{ background: 'rgba(255, 255, 255, 0.95)' }}>
+                          <span className="text-[10px] md:text-xs font-semibold uppercase tracking-wider mr-2 md:mr-3" style={{ color: '#475569' }}>
                             Grade
                           </span>
                           <span className="text-3xl md:text-6xl font-black text-amber-500 leading-none">
@@ -239,10 +239,10 @@ export default function HomePage() {
           <div className="w-full max-w-6xl mx-auto">
             {/* Header */}
             <div className="mb-6 md:mb-12 text-center w-full">
-              <h2 className="text-2xl md:text-4xl font-bold text-slate-900 mb-2 md:mb-3 break-words">
+              <h2 className="text-2xl md:text-4xl font-bold mb-2 md:mb-3 break-words" style={{ color: 'var(--text-main)' }}>
                 How it works
               </h2>
-              <p className="text-sm md:text-lg text-slate-600 max-w-full md:max-w-2xl mx-auto break-words px-2">
+              <p className="text-sm md:text-lg max-w-full md:max-w-2xl mx-auto break-words px-2" style={{ color: 'var(--text-muted)' }}>
                 Find the right room for your next show in three simple steps.
               </p>
             </div>
@@ -250,7 +250,7 @@ export default function HomePage() {
             {/* Large Step Cards */}
             <div className="grid gap-4 md:gap-8 grid-cols-1 md:grid-cols-3 mb-6 md:mb-12">
               {/* Step 1 */}
-              <div className="group relative bg-white rounded-xl md:rounded-2xl border-2 border-slate-200 p-5 md:p-8 shadow-lg hover:shadow-2xl hover:border-blue-400 transition-all duration-300 hover:-translate-y-1">
+              <div className="group relative rounded-xl md:rounded-2xl border-2 p-5 md:p-8 shadow-lg hover:shadow-2xl hover:border-blue-400 transition-all duration-300 hover:-translate-y-1" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                 <div className="flex flex-col items-center text-center">
                   <div className="relative mb-3 md:mb-4">
                     <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
@@ -258,17 +258,17 @@ export default function HomePage() {
                     </div>
                     <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 text-2xl md:text-4xl">🔍</div>
                   </div>
-                  <h3 className="text-lg md:text-2xl font-bold text-slate-900 mb-1 md:mb-2">
+                  <h3 className="text-lg md:text-2xl font-bold mb-1 md:mb-2" style={{ color: 'var(--text-main)' }}>
                     Search a venue
                   </h3>
-                  <p className="text-sm md:text-base text-slate-600">
+                  <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
                     Find rooms by name or city.
                   </p>
                 </div>
               </div>
 
               {/* Step 2 */}
-              <div className="group relative bg-white rounded-xl md:rounded-2xl border-2 border-slate-200 p-5 md:p-8 shadow-lg hover:shadow-2xl hover:border-purple-400 transition-all duration-300 hover:-translate-y-1">
+              <div className="group relative rounded-xl md:rounded-2xl border-2 p-5 md:p-8 shadow-lg hover:shadow-2xl hover:border-purple-400 transition-all duration-300 hover:-translate-y-1" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                 <div className="flex flex-col items-center text-center">
                   <div className="relative mb-3 md:mb-4">
                     <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
@@ -276,17 +276,17 @@ export default function HomePage() {
                     </div>
                     <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 text-2xl md:text-4xl">📊</div>
                   </div>
-                  <h3 className="text-lg md:text-2xl font-bold text-slate-900 mb-1 md:mb-2">
+                  <h3 className="text-lg md:text-2xl font-bold mb-1 md:mb-2" style={{ color: 'var(--text-main)' }}>
                     Read the room
                   </h3>
-                  <p className="text-sm md:text-base text-slate-600">
+                  <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
                     See scores and notes from artists and fans.
                   </p>
                 </div>
               </div>
 
               {/* Step 3 */}
-              <div className="group relative bg-white rounded-xl md:rounded-2xl border-2 border-slate-200 p-5 md:p-8 shadow-lg hover:shadow-2xl hover:border-amber-400 transition-all duration-300 hover:-translate-y-1">
+              <div className="group relative rounded-xl md:rounded-2xl border-2 p-5 md:p-8 shadow-lg hover:shadow-2xl hover:border-amber-400 transition-all duration-300 hover:-translate-y-1" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
                 <div className="flex flex-col items-center text-center">
                   <div className="relative mb-3 md:mb-4">
                     <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
@@ -294,10 +294,10 @@ export default function HomePage() {
                     </div>
                     <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 text-2xl md:text-4xl">✍️</div>
                   </div>
-                  <h3 className="text-lg md:text-2xl font-bold text-slate-900 mb-1 md:mb-2">
+                  <h3 className="text-lg md:text-2xl font-bold mb-1 md:mb-2" style={{ color: 'var(--text-main)' }}>
                     Leave your report card
                   </h3>
-                  <p className="text-sm md:text-base text-slate-600">
+                  <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
                     Drop a new venue or add your take to an existing room.
                   </p>
                 </div>
@@ -356,12 +356,12 @@ export default function HomePage() {
 
         {/* Section 3: Search section */}
         <section id="search-section" className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 py-8 md:py-0 overflow-x-hidden w-full">
-          <div className="bg-white/90 backdrop-blur rounded-3xl border border-slate-100 px-6 py-8 md:px-10 md:py-10 shadow-sm">
+          <div className="backdrop-blur rounded-3xl border px-6 py-8 md:px-10 md:py-10 shadow-sm" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', opacity: 0.9 }}>
           <div className="mb-4 w-full overflow-x-hidden">
-            <h2 className="text-lg md:text-xl font-semibold text-slate-900 break-words">
+            <h2 className="text-lg md:text-xl font-semibold break-words" style={{ color: 'var(--text-main)' }}>
               Start with a search
             </h2>
-            <p className="mt-1 text-sm text-slate-600 break-words">
+            <p className="mt-1 text-sm break-words" style={{ color: 'var(--text-muted)' }}>
               Type a venue name or city, or pick a popular city to see real-world
               report cards.
             </p>
