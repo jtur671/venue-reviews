@@ -6,9 +6,10 @@ dotenv.config({ path: '.env.local', override: true });
 
 export default defineConfig({
   test: {
-    environment: 'node',
+    environment: 'jsdom', // Changed from 'node' to support React components
     globals: true,
     testTimeout: 15000,
+    setupFiles: ['./tests/setup.ts'], // Setup file for testing library
   },
   resolve: {
     alias: {

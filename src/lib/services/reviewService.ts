@@ -11,7 +11,7 @@ export type CreateReviewInput = {
   vibe_score: number;
   staff_score: number;
   layout_score: number;
-  reviewer_role?: 'artist' | 'fan' | 'both' | null;
+  reviewer_role?: 'artist' | 'fan' | null;
 };
 
 export type UpdateReviewInput = {
@@ -22,6 +22,7 @@ export type UpdateReviewInput = {
   vibe_score: number;
   staff_score: number;
   layout_score: number;
+  reviewer_role?: 'artist' | 'fan' | null;
 };
 
 export type ReviewServiceError = {
@@ -61,11 +62,19 @@ export async function getReviewsByVenueId(venueId: string): Promise<{
 
 /**
  * Create a new review
+ * 
+ * IMPORTANT: For logged-in users, reviewer_role MUST be set from profiles.role.
+ * The caller (ReviewForm) is responsible for fetching the current profile and passing reviewer_role.
+ * This ensures that every review reflects the user's current role at the time of creation.
  */
 export async function createReview(input: CreateReviewInput): Promise<{
   data: Review | null;
   error: ReviewServiceError | null;
 }> {
+  // reviewer_role should come from profiles.role for logged-in users
+  // For anonymous users, it will be null
+  const reviewerRole = input.reviewer_role ?? null;
+
   const { data, error } = await supabase
     .from('reviews')
     .insert({
@@ -78,7 +87,7 @@ export async function createReview(input: CreateReviewInput): Promise<{
       vibe_score: input.vibe_score,
       staff_score: input.staff_score,
       layout_score: input.layout_score,
-      reviewer_role: input.reviewer_role ?? null,
+      reviewer_role: reviewerRole,
     })
     .select('id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role')
     .single();
@@ -103,6 +112,9 @@ export async function createReview(input: CreateReviewInput): Promise<{
 
 /**
  * Update an existing review
+ * 
+ * IMPORTANT: reviewer_role should be updated from profiles.role for logged-in users.
+ * This ensures that if a user changes their role, updating their review will reflect the new role.
  */
 export async function updateReview(
   id: string,
@@ -112,6 +124,10 @@ export async function updateReview(
   data: Review | null;
   error: ReviewServiceError | null;
 }> {
+  // reviewer_role should come from profiles.role for logged-in users
+  // This ensures reviews always reflect the user's current role
+  const reviewerRole = input.reviewer_role ?? null;
+
   const { data, error } = await supabase
     .from('reviews')
     .update({
@@ -122,10 +138,11 @@ export async function updateReview(
       vibe_score: input.vibe_score,
       staff_score: input.staff_score,
       layout_score: input.layout_score,
+      reviewer_role: reviewerRole,
     })
     .eq('id', id)
     .eq('user_id', userId)
-    .select('id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id')
+    .select('id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role')
     .single();
 
   if (error) {

@@ -7,7 +7,7 @@ import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
 import { RoleChoiceModal } from '@/components/RoleChoiceModal';
 import { DeleteAccountModal } from '@/components/DeleteAccountModal';
 
-type UserRole = 'artist' | 'fan' | 'both';
+type UserRole = 'artist' | 'fan';
 
 type Profile = {
   id: string;
@@ -198,6 +198,12 @@ export default function AccountPage() {
         prev ? { ...prev, display_name: trimmed } : prev
       );
       setSaveMessage('Saved');
+      
+      // Dispatch custom event to notify Header component to refresh
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+      }
+      
       // Clear message after 2 seconds
       setTimeout(() => setSaveMessage(null), 2000);
     }
@@ -492,7 +498,7 @@ export default function AccountPage() {
                             ? 'Artist perspective'
                             : r.reviewer_role === 'fan'
                             ? 'Fan perspective'
-                            : 'Artist & fan perspective'
+                            : 'Unclassified perspective'
                           : 'Unclassified perspective'}
                       </div>
                       {r.created_at && (

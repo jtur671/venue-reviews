@@ -82,15 +82,6 @@ export function RolePicker() {
         >
           {updating ? 'Updating...' : "I'm a fan / attendee"}
         </button>
-        <button
-          type="button"
-          onClick={() => handleRoleSelect('both')}
-          disabled={updating}
-          className="btn btn--ghost"
-          style={{ fontSize: '0.85rem', paddingInline: '1rem' }}
-        >
-          {updating ? 'Updating...' : 'Both'}
-        </button>
       </div>
     </div>
   );

@@ -12,19 +12,43 @@ type Props = {
 };
 
 export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
+  // Only show modal if role is null (immutable once set)
   const [open, setOpen] = useState(initialRole === null);
   const [saving, setSaving] = useState(false);
 
-  if (!open) return null;
+  // Don't show if role is already set (immutable)
+  if (!open || initialRole !== null) return null;
 
   async function chooseRole(role: UserRole) {
     setSaving(true);
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', profileId);
+    
+    // IMPORTANT: Role is immutable once set. Only allow update if role is currently null.
+    // Use .is('role', null) to enforce immutability at database level.
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', profileId)
+      .is('role', null) // Only update if role is null (immutable constraint)
+      .select('role')
+      .single();
+    
     setSaving(false);
-    if (error) {
-      console.error('Error setting role:', error);
+    
+    if (error || !data) {
+      // If no rows were updated (role already set), close modal silently
+      // This handles the immutable constraint
+      console.error('Error setting role (may be immutable):', error);
+      setOpen(false);
       return;
     }
+    
+    // Verify the role was actually set
+    if (data.role !== role) {
+      // Role wasn't set - likely because it was already set (immutable)
+      setOpen(false);
+      return;
+    }
+    
     onRoleSet(role);
     setOpen(false);
   }

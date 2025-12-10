@@ -79,6 +79,12 @@ export function ReviewForm({
 
     setSubmitting(true);
 
+    // Always get the latest profile role for logged-in users
+    // This ensures reviewer_role is always current from profiles.role, even if profile was updated
+    // For logged-in users, we fetch from the profile hook which gets the latest from the database
+    // For anonymous users, reviewer_role will be null
+    const currentRole = currentUser ? (profile?.role ?? null) : null;
+
     if (existingReview) {
       const updateData: UpdateReviewInput = {
         reviewer_name: reviewer.trim() || null,
@@ -88,6 +94,7 @@ export function ReviewForm({
         vibe_score: aspects.vibe_score,
         staff_score: aspects.staff_score,
         layout_score: aspects.layout_score,
+        reviewer_role: currentRole, // Always update reviewer_role from current profile
       };
 
       const { error } = await updateReview(existingReview.id, currentUserId, updateData);
@@ -108,7 +115,7 @@ export function ReviewForm({
         vibe_score: aspects.vibe_score,
         staff_score: aspects.staff_score,
         layout_score: aspects.layout_score,
-        reviewer_role: profile?.role ?? null,
+        reviewer_role: currentRole, // Always set reviewer_role from current profile for logged-in users
       };
 
       const { error } = await createReview(createData);

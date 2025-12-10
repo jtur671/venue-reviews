@@ -92,11 +92,18 @@ export function Header() {
       }
     }
 
+    // Listen for custom event when profile is updated
+    function handleProfileUpdate() {
+      loadUser();
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('profileUpdated', handleProfileUpdate);
 
     return () => {
       subscription.unsubscribe();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
   }, [pathname, router]);
 
