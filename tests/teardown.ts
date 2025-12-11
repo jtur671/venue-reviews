@@ -30,13 +30,13 @@ export default async function setup() {
     // Wait a moment for any async operations to complete
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Clean up any test profiles - use case-insensitive matching like the cleanup script
+    // Clean up any test profiles - use same approach as cleanup script
     // Fetch all profiles and filter in JavaScript for reliability
     const { data: allProfiles } = await supabase
       .from('profiles')
       .select('id, display_name, role');
     
-    // Filter for test patterns (case-insensitive)
+    // Filter for test patterns (case-insensitive) - same logic as cleanup script
     const testProfiles = (allProfiles || []).filter(p => {
       const displayName = (p.display_name || '').toLowerCase();
       return displayName.includes('test') || displayName === 'test user';
@@ -44,7 +44,7 @@ export default async function setup() {
 
     if (testProfiles && testProfiles.length > 0) {
       const profileIds = testProfiles.map(p => p.id);
-      // Delete all at once - RLS should allow deletion of own profile
+      // Try to delete - if RLS blocks it, that's okay, the cleanup script will handle it
       const { data: deletedData, error } = await supabase
         .from('profiles')
         .delete()
@@ -52,13 +52,16 @@ export default async function setup() {
         .select('id');
       
       if (error) {
-        console.warn(`   ⚠️  Error removing test profiles: ${error.message} (code: ${error.code})`);
-        console.warn(`   ⚠️  This might be an RLS policy issue. Profiles may need manual cleanup.`);
+        // RLS might block this - that's okay, manual cleanup script will handle it
+        console.log(`   ⚠️  Could not delete profiles via teardown: ${error.message} (code: ${error.code})`);
+        console.log(`   💡 Run 'npm run cleanup-test-data' to clean up manually.`);
       } else {
-        const deletedCount = deletedData?.length || 0;
-        console.log(`   ✓ Removed ${deletedCount} of ${testProfiles.length} test profile(s) in global teardown`);
-        if (deletedCount < testProfiles.length) {
-          console.warn(`   ⚠️  ${testProfiles.length - deletedCount} profile(s) could not be deleted (likely RLS policy restriction)`);
+        const actuallyDeleted = deletedData?.length || 0;
+        if (actuallyDeleted > 0) {
+          console.log(`   ✓ Removed ${actuallyDeleted} of ${testProfiles.length} test profile(s) in global teardown`);
+        } else {
+          console.log(`   ⚠️  Delete reported success but 0 profiles were removed (RLS restriction)`);
+          console.log(`   💡 Run 'npm run cleanup-test-data' to clean up manually.`);
         }
       }
     } else {
@@ -94,8 +97,10 @@ export default async function setup() {
     }
 
     console.log('✨ Global teardown complete!\n');
+    console.log('💡 Tip: If test data remains, run "npm run cleanup-test-data" to clean up manually.\n');
   } catch (error) {
     console.warn('⚠️  Global teardown error:', error);
+    console.warn('💡 Run "npm run cleanup-test-data" to clean up test data manually.\n');
   }
   };
 }

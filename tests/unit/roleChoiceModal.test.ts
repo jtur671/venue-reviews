@@ -37,12 +37,17 @@ describe('RoleChoiceModal Immutability (Mission Critical)', () => {
     
     // Also clean up any profiles with "Test User" display_name that might have been created
     // This is a safety net in case testUserId wasn't tracked properly
-    const { data: orphanedProfiles } = await supabase
+    // Fetch all profiles and filter (more reliable than direct query)
+    const { data: allProfiles } = await supabase
       .from('profiles')
-      .select('id')
-      .eq('display_name', 'Test User');
+      .select('id, display_name');
     
-    if (orphanedProfiles && orphanedProfiles.length > 0) {
+    const orphanedProfiles = (allProfiles || []).filter(p => {
+      const displayName = (p.display_name || '').toLowerCase();
+      return displayName === 'test user' || displayName.includes('test');
+    });
+    
+    if (orphanedProfiles.length > 0) {
       const orphanedIds = orphanedProfiles.map(p => p.id);
       // Delete all orphaned profiles (they're all test data)
       const { error: deleteError } = await supabase.from('profiles').delete().in('id', orphanedIds);
