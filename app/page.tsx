@@ -161,9 +161,12 @@ export default function HomePage() {
 
       if (data?.id) {
         console.log('Venue created successfully, navigating to:', data.id);
-        // Trigger photo caching in the background (non-blocking)
-        // The API route will handle fetching from Google and uploading to Supabase Storage
+        
+        // Handle photo caching/backfill:
+        // 1. If we have a Google photo URL, cache it to Supabase Storage
+        // 2. If we have google_place_id but no photo URL, trigger backfill to fetch it
         if (v.photoUrl?.includes('maps.googleapis.com/maps/api/place/photo')) {
+          // Cache the Google photo URL to Supabase Storage
           fetch('/api/cache-venue-photo', {
             method: 'POST',
             headers: {
@@ -177,7 +180,19 @@ export default function HomePage() {
             console.warn('Background photo caching failed:', err);
             // Non-blocking - venue is already created
           });
+        } else if (v.googlePlaceId && !v.photoUrl) {
+          // If we have google_place_id but no photo URL, fetch it from Google Places
+          // The service layer also handles this, but this is a backup trigger
+          fetch('/api/backfill-venue-photos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ venueId: data.id }),
+          }).catch((err) => {
+            console.warn('Background photo backfill failed:', err);
+            // Non-blocking - venue is already created
+          });
         }
+        
         // Small delay to ensure database is ready, then navigate
         setTimeout(() => {
           router.push(`/venues/${data.id}`);

@@ -67,6 +67,20 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
     }
 
     if (data?.id) {
+      // If venue was created with google_place_id but no photo, trigger backfill
+      // (The service already handles this, but we can also trigger it here as a backup)
+      if (googlePlaceId && !photoUrl) {
+        // Photo backfill will happen automatically via the service layer
+        // This is just a backup trigger (non-blocking)
+        fetch('/api/backfill-venue-photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ venueId: data.id }),
+        }).catch(() => {
+          // Silent fail - service layer already handles this
+        });
+      }
+      
       router.push(`/venues/${data.id}`);
       return;
     }

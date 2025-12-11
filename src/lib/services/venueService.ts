@@ -118,7 +118,22 @@ export async function createVenue(input: CreateVenueInput): Promise<{
     };
   }
 
-  // Photo caching is handled client-side in app/page.tsx after venue creation
+  // If venue has google_place_id but no photo_url, trigger photo backfill in background
+  // This ensures new venues automatically get their photos fetched and cached
+  if (input.google_place_id && !googlePhotoUrl && !input.photo_url) {
+    // Trigger backfill asynchronously (non-blocking)
+    // The backfill API will fetch from Google Places and cache to Supabase Storage
+    fetch('/api/backfill-venue-photos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ venueId: data.id }),
+    }).catch((err) => {
+      console.warn(`Background photo backfill failed for venue ${data.id}:`, err);
+      // Non-blocking - venue is already created successfully
+    });
+  }
+
+  // Photo caching for Google URLs is handled client-side in app/page.tsx
   // This keeps the service layer clean and allows for better error handling
 
   return { data: { id: data.id }, error: null };

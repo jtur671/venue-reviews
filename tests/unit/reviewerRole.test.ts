@@ -281,6 +281,7 @@ describe('Reviewer Role from Profiles (Mission Critical)', () => {
 
     try {
       // Create review without a profile (anonymous user)
+      // Don't pass reviewer_role - it should be null for users without profiles
       const createData: CreateReviewInput = {
         venue_id: testVenueId,
         user_id: anonUserId,
@@ -290,7 +291,7 @@ describe('Reviewer Role from Profiles (Mission Critical)', () => {
         vibe_score: 6,
         staff_score: 6,
         layout_score: 6,
-        reviewer_role: null, // Anonymous users should have null reviewer_role
+        // Don't set reviewer_role - should default to null for users without profiles
       };
 
       const { data: reviewData, error: reviewError } = await createReview(createData);
@@ -314,10 +315,11 @@ describe('Reviewer Role from Profiles (Mission Critical)', () => {
     } finally {
       // Restore original profile if it existed
       if (originalProfile) {
-        await supabase.from('profiles').insert(originalProfile).catch(() => {
+        const { error: insertError } = await supabase.from('profiles').insert(originalProfile);
+        if (insertError) {
           // If insert fails (e.g., already exists), try update
-          supabase.from('profiles').update(originalProfile).eq('id', anonUserId);
-        });
+          await supabase.from('profiles').update(originalProfile).eq('id', anonUserId);
+        }
       }
     }
   });
