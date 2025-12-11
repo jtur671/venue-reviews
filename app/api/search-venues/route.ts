@@ -11,6 +11,8 @@ type GooglePlace = {
 };
 
 function buildPhotoUrl(place: GooglePlace): string | null {
+  // Try to get the best photo - prefer exterior/establishment photos
+  // Google Places API returns photos in order of relevance
   const photo = place.photos?.[0];
   if (!photo) return null;
 
@@ -20,7 +22,8 @@ function buildPhotoUrl(place: GooglePlace): string | null {
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) return null;
 
-  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${encodeURIComponent(
+  // Use maxwidth=1200 for better quality on venue cards
+  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${encodeURIComponent(
     ref
   )}&key=${key}`;
 }

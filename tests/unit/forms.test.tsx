@@ -100,7 +100,7 @@ describe('Form Components', () => {
       expect(screen.getByRole('button', { name: /update report card/i })).toBeInTheDocument();
     });
 
-    it('pre-fills form fields from existing review', () => {
+    it('pre-fills form fields from existing review', async () => {
       const existingReview = {
         id: 'review-123',
         reviewer: 'Test Reviewer',
@@ -118,11 +118,13 @@ describe('Form Components', () => {
 
       render(<ReviewForm {...defaultProps} existingReview={existingReview} />);
 
-      const reviewerInput = screen.getByPlaceholderText('Anonymous') as HTMLInputElement;
-      const commentInput = screen.getByPlaceholderText(/best and worst parts/i) as HTMLTextAreaElement;
-
-      expect(reviewerInput.value).toBe('Test Reviewer');
-      expect(commentInput.value).toBe('Test comment');
+      // Wait for useEffect with setTimeout to run
+      await waitFor(() => {
+        const reviewerInput = screen.getByPlaceholderText('Anonymous') as HTMLInputElement;
+        const commentInput = screen.getByPlaceholderText(/best and worst parts/i) as HTMLTextAreaElement;
+        expect(reviewerInput.value).toBe('Test Reviewer');
+        expect(commentInput.value).toBe('Test comment');
+      });
     });
 
     it('creates review when form is submitted', async () => {
@@ -275,6 +277,8 @@ describe('Form Components', () => {
           city: 'Test City',
           country: 'USA',
           address: null,
+          photo_url: null,
+          google_place_id: undefined,
         });
       });
 

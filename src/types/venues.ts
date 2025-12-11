@@ -5,6 +5,12 @@ export type VenueWithStats = {
   avgScore: number | null;
   reviewCount: number;
   latestReviewAt?: string | null;
+  photo_url?: string | null;
+  google_place_id?: string | null;
+  artistScore: number | null;
+  fanScore: number | null;
+  artistCount: number;
+  fanCount: number;
 };
 
 export type RemoteVenue = {

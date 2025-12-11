@@ -26,12 +26,30 @@ describe('RoleChoiceModal Immutability (Mission Critical)', () => {
   });
 
   afterAll(async () => {
-    if (isRateLimited || !testUserId) {
+    if (isRateLimited) {
       return;
     }
 
-    // Clean up: Delete test profile
-    await supabase.from('profiles').delete().eq('id', testUserId);
+    // Clean up: Delete test profile (even if testUserId is null, try to clean up by display_name)
+    if (testUserId) {
+      await supabase.from('profiles').delete().eq('id', testUserId);
+    }
+    
+    // Also clean up any profiles with "Test User" display_name that might have been created
+    // This is a safety net in case testUserId wasn't tracked properly
+    const { data: orphanedProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('display_name', 'Test User');
+    
+    if (orphanedProfiles && orphanedProfiles.length > 0) {
+      const orphanedIds = orphanedProfiles.map(p => p.id);
+      // Delete all orphaned profiles (they're all test data)
+      const { error: deleteError } = await supabase.from('profiles').delete().in('id', orphanedIds);
+      if (!deleteError && orphanedIds.length > 0) {
+        console.log(`🧹 Cleaned up ${orphanedIds.length} orphaned test profile(s) from roleChoiceModal tests`);
+      }
+    }
 
     // Sign out
     await supabase.auth.signOut();

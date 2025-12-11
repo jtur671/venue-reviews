@@ -1,9 +1,39 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { supabase } from '@/lib/supabaseClient';
-import { KNOWN_VENUE_ID } from '../../tests/fixtures';
 
 describe('Review CRUD Operations', () => {
+  let testVenueId: string | null = null;
+
+  beforeAll(async () => {
+    // Create a test venue for these tests
+    const { data: venueData, error: venueError } = await supabase
+      .from('venues')
+      .insert({
+        name: `Test Venue ${Date.now()}`,
+        city: 'Test City',
+        country: 'Test Country',
+      })
+      .select('id')
+      .single();
+
+    if (venueError || !venueData) {
+      throw new Error(`Failed to create test venue: ${venueError?.message}`);
+    }
+    testVenueId = venueData.id;
+  });
+
+  afterAll(async () => {
+    // Clean up test venue
+    if (testVenueId) {
+      await supabase.from('venues').delete().eq('id', testVenueId);
+    }
+  });
+
   it('can create, update, and delete a review', async () => {
+    if (!testVenueId) {
+      throw new Error('Test venue not created');
+    }
+
     const uniqueComment = `Test review ${Date.now()}`;
     const updatedComment = `Updated review ${Date.now()}`;
 
@@ -11,7 +41,7 @@ describe('Review CRUD Operations', () => {
     const { data: insertData, error: insertError } = await supabase
       .from('reviews')
       .insert({
-        venue_id: KNOWN_VENUE_ID,
+        venue_id: testVenueId,
         reviewer_name: 'Test Reviewer',
         score: 8,
         sound_score: 8,
@@ -97,6 +127,10 @@ describe('Review CRUD Operations', () => {
   });
 
   it('can update only specific fields without affecting others', async () => {
+    if (!testVenueId) {
+      throw new Error('Test venue not created');
+    }
+
     const initialComment = `Initial comment ${Date.now()}`;
     const updatedComment = `Updated comment ${Date.now()}`;
 
@@ -104,7 +138,7 @@ describe('Review CRUD Operations', () => {
     const { data: insertData, error: insertError } = await supabase
       .from('reviews')
       .insert({
-        venue_id: KNOWN_VENUE_ID,
+        venue_id: testVenueId,
         reviewer_name: 'Test Reviewer',
         score: 7,
         sound_score: 7,
@@ -146,6 +180,10 @@ describe('Review CRUD Operations', () => {
   });
 
   it('stores and retrieves aspect scores correctly', async () => {
+    if (!testVenueId) {
+      throw new Error('Test venue not created');
+    }
+
     const soundScore = 8;
     const vibeScore = 7;
     const staffScore = 9;
@@ -155,7 +193,7 @@ describe('Review CRUD Operations', () => {
     const { data: insertData, error: insertError } = await supabase
       .from('reviews')
       .insert({
-        venue_id: KNOWN_VENUE_ID,
+        venue_id: testVenueId,
         reviewer_name: 'Test Reviewer',
         score: calculatedScore,
         sound_score: soundScore,

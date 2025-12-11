@@ -77,7 +77,7 @@ describe('Search Venues API', () => {
       googlePlaceId: 'ChIJ123',
     });
     expect(data.results[0].photoUrl).toContain('photo_reference=photo_ref_123');
-    expect(data.results[0].photoUrl).toContain('maxwidth=800');
+    expect(data.results[0].photoUrl).toContain('maxwidth=1200');
     expect(data.results[0].photoUrl).toContain('key=test-api-key');
 
     // Verify fetch was called with correct query
@@ -316,7 +316,7 @@ describe('Search Venues API', () => {
     expect(response.status).toBe(200);
     expect(data.results[0].photoUrl).toBeTruthy();
     expect(data.results[0].photoUrl).toContain('photo_reference=photo_ref_abc');
-    expect(data.results[0].photoUrl).toContain('maxwidth=800');
+    expect(data.results[0].photoUrl).toContain('maxwidth=1200');
   });
 
   it('returns null photoUrl when place has no photos', async () => {

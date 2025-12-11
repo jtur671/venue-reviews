@@ -6,3 +6,6 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+// Note: Global cleanup is handled by individual test files' afterAll hooks
+// and by the cleanup script (npm run cleanup-test-data)

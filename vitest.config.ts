@@ -10,6 +10,7 @@ export default defineConfig({
     globals: true,
     testTimeout: 15000,
     setupFiles: ['./tests/setup.ts'], // Setup file for testing library
+    globalSetup: './tests/teardown.ts', // Global setup/teardown after ALL tests
   },
   resolve: {
     alias: {

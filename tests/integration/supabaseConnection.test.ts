@@ -40,12 +40,29 @@ describe('Supabase connection', () => {
   });
 
   it('can insert and clean up a review for a known venue', async () => {
+    // Create a test venue first
+    const uniqueVenueName = `Vitest Venue ${Date.now()}`;
+    const { data: venueData, error: venueError } = await supabase
+      .from('venues')
+      .insert({
+        name: uniqueVenueName,
+        city: 'Test City',
+        country: 'Testland',
+      })
+      .select('id')
+      .single();
+
+    if (venueError || !venueData) {
+      throw new Error(`Failed to create test venue: ${venueError?.message}`);
+    }
+
+    const testVenueId = venueData.id;
     const uniqueComment = `Automated test review ${Date.now()}`;
 
     const { data: insertData, error: insertError } = await supabase
       .from('reviews')
       .insert({
-        venue_id: KNOWN_VENUE_ID,
+        venue_id: testVenueId,
         reviewer_name: 'Vitest Bot',
         score: 8,
         comment: uniqueComment,
@@ -77,6 +94,9 @@ describe('Supabase connection', () => {
       .eq('id', insertedId);
 
     expect(deleteError).toBeNull();
+
+    // Clean up test venue
+    await supabase.from('venues').delete().eq('id', testVenueId);
   });
 
   it('can insert and clean up a venue', async () => {

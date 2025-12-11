@@ -31,7 +31,7 @@ describe('Reviewer Role from Profiles (Mission Critical)', () => {
   });
 
   afterAll(async () => {
-    if (isRateLimited || !testUserId) {
+    if (isRateLimited) {
       return;
     }
 
@@ -45,9 +45,26 @@ describe('Reviewer Role from Profiles (Mission Critical)', () => {
       await supabase.from('venues').delete().in('id', testVenueIds);
     }
 
-    // Clean up: Delete test profile
+    // Clean up: Delete test profile by ID
     if (testUserId) {
       await supabase.from('profiles').delete().eq('id', testUserId);
+    }
+    
+    // Also clean up any profiles with "Test User" display_name that might have been created
+    // This is a safety net in case testUserId wasn't tracked properly or test was interrupted
+    const { data: orphanedProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('display_name', 'Test User');
+    
+    if (orphanedProfiles && orphanedProfiles.length > 0) {
+      const orphanedIds = orphanedProfiles.map(p => p.id);
+      // Delete all orphaned profiles (they're all test data)
+      // If testUserId is in the list, it should have been deleted above, but delete it again to be safe
+      const { error: deleteError } = await supabase.from('profiles').delete().in('id', orphanedIds);
+      if (!deleteError && orphanedIds.length > 0) {
+        console.log(`🧹 Cleaned up ${orphanedIds.length} orphaned test profile(s) from reviewerRole tests`);
+      }
     }
 
     // Sign out
@@ -289,7 +306,8 @@ describe('Reviewer Role from Profiles (Mission Critical)', () => {
 
       expect(dbReview?.reviewer_role).toBeNull();
     } finally {
-      // Clean up anonymous user session
+      // Clean up anonymous user profile and session
+      await supabase.from('profiles').delete().eq('id', anonUserId);
       await supabase.auth.signOut();
     }
   });

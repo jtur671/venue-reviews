@@ -60,11 +60,16 @@ describe('Account Page Review Loading (Mission Critical)', () => {
   });
 
   afterAll(async () => {
-    // Sign out only once at the end
-    if (testUserId) {
-      await supabase.auth.signOut();
-      testUserId = null;
+    if (isRateLimited || !testUserId) {
+      return;
     }
+
+    // Clean up: Delete test profile
+    await supabase.from('profiles').delete().eq('id', testUserId);
+
+    // Sign out only once at the end
+    await supabase.auth.signOut();
+    testUserId = null;
   });
 
   it('loads reviews for an authenticated user with proper venue data', async () => {

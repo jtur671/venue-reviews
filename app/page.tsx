@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { VenueFilters } from '@/components/VenueFilters';
@@ -13,45 +13,7 @@ import { useVenues } from '@/hooks/useVenues';
 import { useVenueStats } from '@/hooks/useVenueStats';
 import { useRemoteSearch } from '@/hooks/useRemoteSearch';
 import { createVenue } from '@/lib/services/venueService';
-
-type FeaturedVenue = {
-  id: string;
-  name: string;
-  city: string;
-  imageUrl: string;
-  grade: string; // e.g. "B+"
-  score: string; // "7.8/10"
-};
-
-const FEATURED_VENUES: FeaturedVenue[] = [
-  {
-    id: 'factory-town',
-    name: 'Factory Town',
-    city: 'Miami, FL',
-    imageUrl:
-      'https://images.unsplash.com/photo-1571266028243-3716f01c7b4e?auto=format&fit=crop&w=1200&q=80',
-    grade: 'B+',
-    score: '7.8/10',
-  },
-  {
-    id: 'bowery-ballroom',
-    name: 'Bowery Ballroom',
-    city: 'New York, NY',
-    imageUrl:
-      'https://images.unsplash.com/photo-1512427691650-1e0c2f9a81b3?auto=format&fit=crop&w=1200&q=80',
-    grade: 'A-',
-    score: '8.6/10',
-  },
-  {
-    id: 'crooked-thumb',
-    name: 'Crooked Thumb Brewery',
-    city: 'Safety Harbor, FL',
-    imageUrl:
-      'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=1200&q=80',
-    grade: 'B',
-    score: '8.0/10',
-  },
-];
+import { scoreToGrade } from '@/lib/utils/grades';
 
 type SortBy = 'top-rated' | 'most-reviewed' | 'name';
 
@@ -67,6 +29,31 @@ export default function HomePage() {
   const { venues, loading, refetch: loadVenues } = useVenues();
   const { popularCityStats, popularCities, recentlyRated, existingVenueLookup } = useVenueStats(venues);
   const { remoteResults, remoteLoading, remoteError, hasQuery } = useRemoteSearch(search, selectedCity);
+  
+  // Auto-backfill photos for venues with google_place_id but no photo_url
+  useEffect(() => {
+    if (!venues || venues.length === 0) return;
+    
+    // Find venues that need photos
+    const venuesNeedingPhotos = venues.filter(
+      v => v.google_place_id && !v.photo_url
+    );
+    
+    if (venuesNeedingPhotos.length === 0) return;
+    
+    // Backfill photos for up to 3 venues at a time (to avoid rate limits)
+    const venuesToBackfill = venuesNeedingPhotos.slice(0, 3);
+    
+    venuesToBackfill.forEach((venue) => {
+      fetch('/api/backfill-venue-photos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId: venue.id }),
+      }).catch((err) => {
+        console.warn(`Background photo backfill failed for ${venue.name}:`, err);
+      });
+    });
+  }, [venues]);
 
   const filteredVenues = useMemo(() => {
     let list = venues;
@@ -174,6 +161,23 @@ export default function HomePage() {
 
       if (data?.id) {
         console.log('Venue created successfully, navigating to:', data.id);
+        // Trigger photo caching in the background (non-blocking)
+        // The API route will handle fetching from Google and uploading to Supabase Storage
+        if (v.photoUrl?.includes('maps.googleapis.com/maps/api/place/photo')) {
+          fetch('/api/cache-venue-photo', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              photoUrl: v.photoUrl,
+              venueId: data.id,
+            }),
+          }).catch((err) => {
+            console.warn('Background photo caching failed:', err);
+            // Non-blocking - venue is already created
+          });
+        }
         // Small delay to ensure database is ready, then navigate
         setTimeout(() => {
           router.push(`/venues/${data.id}`);
@@ -199,7 +203,7 @@ export default function HomePage() {
     <main className="overflow-x-hidden" style={{ background: 'var(--bg)' }}>
       <div className="mx-auto w-full max-w-6xl px-0">
         {/* Section 1: Hero carousel with venue cards + grades */}
-        <section className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 pt-4 md:pt-0 pb-8 md:pb-0 overflow-x-hidden w-full max-w-full">
+        <section className="snap-start flex flex-col justify-start px-4 pt-8 md:pt-12 pb-8 md:pb-12 overflow-x-hidden w-full max-w-full">
           <div className="mb-4 md:mb-6 w-full">
             <p className="text-xs font-medium tracking-wide uppercase mb-1 md:mb-0.5" style={{ color: '#0ea5e9' }}>
               Live room report cards
@@ -224,54 +228,192 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Carousel */}
+          {/* Carousel - Dynamic top 3 most reviewed venues */}
           <div className="relative">
             <div className="flex gap-4 md:gap-8 overflow-x-auto pb-2 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:snap-none">
-              {FEATURED_VENUES.map((v) => (
-                <article
-                  key={v.id}
-                  className="relative flex-shrink-0 w-[85vw] max-w-[420px] md:w-auto snap-center rounded-2xl md:rounded-3xl bg-slate-900 text-slate-50 shadow-2xl shadow-slate-900/50 overflow-hidden transform transition-transform hover:scale-[1.02]"
-                >
-                  <div className="relative h-64 md:h-96">
-                    <img
-                      src={v.imageUrl}
-                      alt={v.name}
-                      className="h-full w-full object-cover opacity-80"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
+              {loading ? (
+                <div className="col-span-3 text-center py-12">
+                  <p className="text-slate-400">Loading venues...</p>
+                </div>
+              ) : (() => {
+                // Get the 3 most reviewed venues (dynamic, not hardcoded)
+                const topVenues = venues
+                  .filter((v) => v.reviewCount > 0)
+                  .sort((a, b) => {
+                    // Primary sort: most reviews
+                    if (b.reviewCount !== a.reviewCount) {
+                      return b.reviewCount - a.reviewCount;
+                    }
+                    // Secondary sort: highest score
+                    return (b.avgScore ?? 0) - (a.avgScore ?? 0);
+                  })
+                  .slice(0, 3);
+                
+                if (topVenues.length === 0) {
+                  return (
+                    <div className="col-span-3 text-center py-12">
+                      <p className="text-slate-400">No venues with reviews yet. Be the first to rate a venue!</p>
+                    </div>
+                  );
+                }
+                
+                return topVenues.map((v) => {
+                  const grade = scoreToGrade(v.avgScore);
+                  const artistGrade = v.artistScore ? scoreToGrade(v.artistScore) : null;
+                  const fanGrade = v.fanScore ? scoreToGrade(v.fanScore) : null;
+                  const hasBoth = v.artistCount > 0 && v.fanCount > 0;
+                  const hasOnlyArtist = v.artistCount > 0 && v.fanCount === 0;
+                  const hasOnlyFan = v.fanCount > 0 && v.artistCount === 0;
+                  
+                  // Use venue photo if available
+                  // If no photo but we have google_place_id, trigger backfill in background
+                  let imageUrl = v.photo_url || null;
+                  
+                  // If venue has google_place_id but no photo_url, trigger backfill
+                  if (!imageUrl && v.google_place_id) {
+                    // Trigger backfill in background (non-blocking)
+                    fetch('/api/backfill-venue-photos', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ venueId: v.id }),
+                    }).catch((err) => {
+                      console.warn(`Background photo backfill failed for ${v.name}:`, err);
+                    });
+                  }
+                  
+                  // Generate a unique placeholder based on venue name hash if no photo
+                  if (!imageUrl) {
+                    const nameHash = v.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                    const placeholderIndex = (nameHash % 5); // 0-4 for different images
                     
-                    {/* Large Grade Badge - Top Right */}
-                    <div className="absolute top-3 right-3 md:top-5 md:right-5">
-                      <div className="flex flex-col items-end gap-1.5 md:gap-2">
-                        <div className="inline-flex items-center justify-center rounded-xl md:rounded-2xl backdrop-blur-sm px-3 py-2 md:px-5 md:py-4 shadow-2xl border-2 border-amber-400/30" style={{ background: 'rgba(255, 255, 255, 0.95)' }}>
-                          <span className="text-[10px] md:text-xs font-semibold uppercase tracking-wider mr-2 md:mr-3" style={{ color: '#475569' }}>
-                            Grade
-                          </span>
-                          <span className="text-3xl md:text-6xl font-black text-amber-500 leading-none">
-                            {v.grade}
-                          </span>
+                    // Use different Unsplash images for variety - music/venue themed
+                    const placeholderImages = [
+                      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80', // Performance
+                      'https://images.unsplash.com/photo-1512427691650-1e0c2f9a81b3?auto=format&fit=crop&w=1200&q=80', // Venue interior
+                      'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=1200&q=80', // Stage/concert
+                      'https://images.unsplash.com/photo-1571266028243-3716f01c7b4e?auto=format&fit=crop&w=1200&q=80', // Live music
+                      'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1200&q=80', // Concert crowd
+                    ];
+                    imageUrl = placeholderImages[placeholderIndex] || placeholderImages[0];
+                  }
+                  
+                  return (
+                    <Link
+                      key={v.id}
+                      href={`/venues/${v.id}`}
+                      className="relative flex-shrink-0 w-[85vw] max-w-[420px] md:w-auto snap-center rounded-2xl md:rounded-3xl bg-slate-900 text-slate-50 shadow-2xl shadow-slate-900/50 overflow-hidden transform transition-transform hover:scale-[1.02] block"
+                    >
+                      <div className="relative h-64 md:h-96 bg-slate-800 overflow-hidden">
+                        {imageUrl && (
+                          <img
+                            src={imageUrl}
+                            alt={v.name}
+                            className="h-full w-full object-cover opacity-80"
+                            loading="lazy"
+                            onError={(e) => {
+                              // If image fails to load, hide it and show gradient background
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.style.background = 'linear-gradient(135deg, #1e293b 0%, #334155 100%)';
+                              }
+                            }}
+                          />
+                        )}
+                        {!imageUrl && (
+                          <div className="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
+                        
+                        {/* Rotten Tomatoes Style Grade Display - Top Right */}
+                        <div className="absolute top-3 right-3 md:top-5 md:right-5">
+                          <div className="flex flex-col items-end gap-2 md:gap-3">
+                            {/* Overall Grade - Large and Prominent */}
+                            {grade && (
+                              <div className="inline-flex items-center justify-center rounded-xl md:rounded-2xl backdrop-blur-sm px-3 py-2 md:px-5 md:py-4 shadow-2xl border-2 border-amber-400/30" style={{ background: 'rgba(255, 255, 255, 0.95)' }}>
+                                <span className="text-[10px] md:text-xs font-semibold uppercase tracking-wider mr-2 md:mr-3" style={{ color: '#475569' }}>
+                                  Overall
+                                </span>
+                                <span className="text-3xl md:text-6xl font-black text-amber-500 leading-none">
+                                  {grade}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Artist & Fan Scores - Rotten Tomatoes Style Side-by-Side */}
+                            {hasBoth && (
+                              <div className="flex gap-2 md:gap-3">
+                                {/* Artist Score */}
+                                <div className="inline-flex flex-col items-center rounded-lg md:rounded-xl backdrop-blur-sm px-2.5 py-1.5 md:px-4 md:py-2 shadow-xl border border-blue-400/40" style={{ background: 'rgba(37, 99, 235, 0.85)' }}>
+                                  <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-blue-100 mb-0.5">
+                                    Artist
+                                  </span>
+                                  <span className="text-xl md:text-3xl font-black text-white leading-none">
+                                    {artistGrade}
+                                  </span>
+                                  <span className="text-[8px] md:text-[9px] text-blue-200 mt-0.5">
+                                    {v.artistCount} {v.artistCount === 1 ? 'review' : 'reviews'}
+                                  </span>
+                                </div>
+                                
+                                {/* Fan Score */}
+                                <div className="inline-flex flex-col items-center rounded-lg md:rounded-xl backdrop-blur-sm px-2.5 py-1.5 md:px-4 md:py-2 shadow-xl border border-purple-400/40" style={{ background: 'rgba(147, 51, 234, 0.85)' }}>
+                                  <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-purple-100 mb-0.5">
+                                    Fan
+                                  </span>
+                                  <span className="text-xl md:text-3xl font-black text-white leading-none">
+                                    {fanGrade}
+                                  </span>
+                                  <span className="text-[8px] md:text-[9px] text-purple-200 mt-0.5">
+                                    {v.fanCount} {v.fanCount === 1 ? 'review' : 'reviews'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Only Artist Reviews */}
+                            {hasOnlyArtist && (
+                              <div className="inline-flex flex-col items-center rounded-lg md:rounded-xl backdrop-blur-sm px-2.5 py-1.5 md:px-4 md:py-2 shadow-xl border border-blue-400/40" style={{ background: 'rgba(37, 99, 235, 0.85)' }}>
+                                <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-blue-100 mb-0.5">
+                                  Artist
+                                </span>
+                                <span className="text-xl md:text-3xl font-black text-white leading-none">
+                                  {artistGrade}
+                                </span>
+                                <span className="text-[8px] md:text-[9px] text-blue-200 mt-0.5">
+                                  {v.artistCount} {v.artistCount === 1 ? 'review' : 'reviews'}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Only Fan Reviews */}
+                            {hasOnlyFan && (
+                              <div className="inline-flex flex-col items-center rounded-lg md:rounded-xl backdrop-blur-sm px-2.5 py-1.5 md:px-4 md:py-2 shadow-xl border border-purple-400/40" style={{ background: 'rgba(147, 51, 234, 0.85)' }}>
+                                <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-purple-100 mb-0.5">
+                                  Fan
+                                </span>
+                                <span className="text-xl md:text-3xl font-black text-white leading-none">
+                                  {fanGrade}
+                                </span>
+                                <span className="text-[8px] md:text-[9px] text-purple-200 mt-0.5">
+                                  {v.fanCount} {v.fanCount === 1 ? 'review' : 'reviews'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-xs md:text-sm font-semibold text-slate-100 bg-black/50 backdrop-blur-sm px-2 py-1 md:px-3 md:py-1.5 rounded-lg">
-                          {v.score} overall
-                        </span>
+
+                        {/* Venue Info - Bottom Left */}
+                        <div className="absolute bottom-3 left-3 right-3 md:bottom-5 md:left-5 md:right-5">
+                          <h2 className="text-lg md:text-3xl font-bold mb-1 md:mb-2 drop-shadow-lg">{v.name}</h2>
+                          <p className="text-sm md:text-lg text-slate-200 font-semibold">{v.city}</p>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Venue Info - Bottom Left */}
-                    <div className="absolute bottom-3 left-3 right-3 md:bottom-5 md:left-5 md:right-5">
-                      <h2 className="text-lg md:text-3xl font-bold mb-1 md:mb-2 drop-shadow-lg">{v.name}</h2>
-                      <p className="text-sm md:text-lg text-slate-200 font-semibold">{v.city}</p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 md:p-7 text-sm md:text-base border-t border-white/10 bg-slate-900/95">
-                    <p className="text-slate-200 leading-relaxed">
-                      <span className="font-bold text-slate-50 text-base md:text-lg">Sound, vibe, layout, fairness.</span>{' '}
-                      A single grade from artist and fan report cards.
-                    </p>
-                  </div>
-                </article>
-              ))}
+                    </Link>
+                  );
+                });
+              })()}
             </div>
           </div>
         </section>

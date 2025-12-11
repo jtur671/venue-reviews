@@ -57,7 +57,7 @@ describe('Venue Service', () => {
       expect(result.data?.[0].reviewCount).toBe(2);
       expect(result.data?.[1].reviewCount).toBe(0);
       expect(mockFrom).toHaveBeenCalledWith('venues');
-      expect(mockSelect).toHaveBeenCalledWith('id, name, city, reviews(score, created_at)');
+      expect(mockSelect).toHaveBeenCalledWith('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)');
       expect(mockOrder).toHaveBeenCalledWith('name', { ascending: true });
     });
 

@@ -35,7 +35,7 @@ export async function getAllVenues(): Promise<{
 }> {
   const { data, error } = await supabase
     .from('venues')
-    .select('id, name, city, reviews(score, created_at)')
+    .select('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)')
     .order('name', { ascending: true });
 
   if (error) {
@@ -82,11 +82,18 @@ export async function getVenueById(id: string): Promise<{
 
 /**
  * Create a new venue
+ * If a Google Places photo URL is provided, it will be cached to Supabase Storage
+ * Note: Photo caching happens asynchronously after venue creation
  */
 export async function createVenue(input: CreateVenueInput): Promise<{
   data: { id: string } | null;
   error: VenueServiceError | null;
 }> {
+  // First, create the venue (without photo_url if it's a Google URL)
+  const googlePhotoUrl = input.photo_url?.includes('maps.googleapis.com/maps/api/place/photo')
+    ? input.photo_url
+    : null;
+  
   const { data, error } = await supabase
     .from('venues')
     .insert({
@@ -94,7 +101,7 @@ export async function createVenue(input: CreateVenueInput): Promise<{
       city: input.city.trim(),
       country: input.country?.trim() || 'USA',
       address: input.address?.trim() || null,
-      photo_url: input.photo_url || null,
+      photo_url: googlePhotoUrl ? null : (input.photo_url || null), // Don't store Google URLs directly
       google_place_id: input.google_place_id || null,
     })
     .select('id')
@@ -110,6 +117,9 @@ export async function createVenue(input: CreateVenueInput): Promise<{
       },
     };
   }
+
+  // Photo caching is handled client-side in app/page.tsx after venue creation
+  // This keeps the service layer clean and allows for better error handling
 
   return { data: { id: data.id }, error: null };
 }
