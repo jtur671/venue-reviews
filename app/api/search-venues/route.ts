@@ -6,17 +6,46 @@ type GooglePlace = {
   formatted_address?: string;
   types?: string[];
   photos?: Array<{
+    height?: number;
+    width?: number;
     photo_reference: string;
   }>;
 };
 
-function buildPhotoUrl(place: GooglePlace): string | null {
-  // Try to get the best photo - prefer exterior/establishment photos
-  // Google Places API returns photos in order of relevance
-  const photo = place.photos?.[0];
-  if (!photo) return null;
+function pickBestPhotoReference(
+  photos: Array<{ photo_reference: string; width?: number; height?: number }> | undefined
+): string | null {
+  if (!photos || photos.length === 0) return null;
 
-  const ref = photo.photo_reference;
+  // Heuristic:
+  // - Prefer landscape images (better for cards)
+  // - Prefer higher resolution
+  // Google sorts by relevance, but the first photo is often parking lots / map captures.
+  const scored = photos
+    .filter((p) => typeof p.photo_reference === 'string' && p.photo_reference.length > 0)
+    .map((p, idx) => {
+      const w = typeof p.width === 'number' ? p.width : 0;
+      const h = typeof p.height === 'number' ? p.height : 0;
+      const isLandscape = w > 0 && h > 0 ? w >= h : true;
+      const area = w > 0 && h > 0 ? w * h : 0;
+
+      // Keep a small bias toward Google's ordering (lower idx wins ties).
+      const score =
+        (isLandscape ? 1_000_000_000 : 0) +
+        area +
+        w * 10_000 -
+        idx; // tiny tie-breaker
+
+      return { ref: p.photo_reference, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return scored[0]?.ref ?? null;
+}
+
+function buildPhotoUrl(place: GooglePlace): string | null {
+  // Pick the best candidate instead of always using photos[0]
+  const ref = pickBestPhotoReference(place.photos);
   if (!ref) return null;
 
   const key = process.env.GOOGLE_PLACES_API_KEY;

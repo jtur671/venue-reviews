@@ -146,15 +146,15 @@ export default function HomePage() {
       if (error) {
         console.error('Error creating venue:', error);
         // Fallback to old behavior if creation fails
-        setDraftVenue({
-          name: v.name,
-          city: v.city,
-          country: v.country,
-          address: v.address,
+    setDraftVenue({
+      name: v.name,
+      city: v.city,
+      country: v.country,
+      address: v.address,
           photoUrl: v.photoUrl,
           googlePlaceId: v.googlePlaceId,
-        });
-        addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+    addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
         setCreatingVenue(false);
         return;
       }
@@ -430,8 +430,8 @@ export default function HomePage() {
                 });
               })()}
             </div>
-          </div>
-        </section>
+        </div>
+      </section>
 
         {/* Section 2: "How it works" narrative */}
         <section className="snap-start min-h-screen md:h-screen flex flex-col justify-start md:justify-center px-4 py-8 md:py-0">
@@ -567,12 +567,12 @@ export default function HomePage() {
             </div>
 
             <div className="flex-shrink-0">
-              <VenueFilters
-                cities={popularCities}
-                selectedCity={selectedCity}
-                onCityChange={setSelectedCity}
-                search={search}
-                onSearchChange={setSearch}
+      <VenueFilters
+        cities={popularCities}
+        selectedCity={selectedCity}
+        onCityChange={setSelectedCity}
+        search={search}
+        onSearchChange={setSearch}
                 popularCityStats={popularCityStats}
                 onPopularCityClick={handleExampleCity}
                 searchDisabled={selectedCity !== 'All'}
@@ -592,44 +592,44 @@ export default function HomePage() {
                       >
                         Top rated
                       </button>
-                      <button
-                        type="button"
+              <button
+                type="button"
                         className={`chip ${sortBy === 'most-reviewed' ? 'chip--active' : ''}`}
                         onClick={() => setSortBy('most-reviewed')}
                         aria-pressed={sortBy === 'most-reviewed'}
-                      >
+              >
                         Most reviewed
-                      </button>
-                      <button
-                        type="button"
+              </button>
+              <button
+                type="button"
                         className={`chip ${sortBy === 'name' ? 'chip--active' : ''}`}
                         onClick={() => setSortBy('name')}
                         aria-pressed={sortBy === 'name'}
-                      >
+              >
                         A–Z
-                      </button>
+              </button>
                     </div>
-                  </div>
+        </div>
                   <VenueList venues={filteredVenues} loading={loading} label={communityLabel} />
-              <RemoteSearchResults
-                results={remoteResults}
-                loading={remoteLoading}
-                error={remoteError}
-                hasQuery={hasQuery}
-                onSelectVenue={handleSelectRemoteVenue}
-                existingVenueLookup={existingVenueLookup}
+          <RemoteSearchResults
+            results={remoteResults}
+            loading={remoteLoading}
+            error={remoteError}
+            hasQuery={hasQuery}
+            onSelectVenue={handleSelectRemoteVenue}
+            existingVenueLookup={existingVenueLookup}
                 creatingVenue={creatingVenue}
               />
-                  <div ref={addVenueRef}>
-                    <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
+        <div ref={addVenueRef}>
+          <AddVenueForm onAdded={loadVenues} draftVenue={draftVenue} />
                   </div>
                 </>
               ) : (
                 <div style={{ marginTop: '1rem' }}>
                   <RecentlyRatedSection venues={recentlyRated} />
-                </div>
-              )}
-            </div>
+        </div>
+      )}
+    </div>
           </div>
         </section>
       </div>

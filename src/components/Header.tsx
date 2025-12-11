@@ -14,6 +14,7 @@ type CurrentUser = {
   name?: string;
   avatarUrl?: string;
   displayName?: string;
+  role?: 'artist' | 'fan' | null;
 };
 
 export function Header() {
@@ -50,15 +51,15 @@ export function Header() {
       // Check cache for profile
       const cachedProfile = userCache.getProfile(u.id);
       
-      // Fetch display name from profiles table (use cache if available)
+      // Fetch display name and role from profiles table (use cache if available)
       let profileData = cachedProfile;
       if (!cachedProfile) {
         const { data: fetchedProfile } = await supabase
           .from('profiles')
-          .select('display_name')
+          .select('display_name, role')
           .eq('id', u.id)
           .maybeSingle();
-        profileData = fetchedProfile ? { id: u.id, display_name: fetchedProfile.display_name, role: null, cachedAt: Date.now() } : null;
+        profileData = fetchedProfile ? { id: u.id, display_name: fetchedProfile.display_name, role: fetchedProfile.role, cachedAt: Date.now() } : null;
         if (profileData) {
           userCache.setProfile(u.id, profileData);
         }
@@ -70,6 +71,7 @@ export function Header() {
         name: u.user_metadata.full_name ?? undefined,
         avatarUrl: u.user_metadata.picture ?? u.user_metadata.avatar_url ?? undefined,
         displayName: profileData?.display_name ?? undefined,
+        role: profileData?.role ?? undefined,
       };
 
       userCache.setUser(userData);
@@ -94,10 +96,10 @@ export function Header() {
       if (!profileData) {
         const { data: fetchedProfile } = await supabase
           .from('profiles')
-          .select('display_name')
+          .select('display_name, role')
           .eq('id', u.id)
           .maybeSingle();
-        profileData = fetchedProfile ? { id: u.id, display_name: fetchedProfile.display_name, role: null, cachedAt: Date.now() } : null;
+        profileData = fetchedProfile ? { id: u.id, display_name: fetchedProfile.display_name, role: fetchedProfile.role, cachedAt: Date.now() } : null;
         if (profileData) {
           userCache.setProfile(u.id, profileData);
         }
@@ -109,6 +111,7 @@ export function Header() {
         name: u.user_metadata.full_name ?? undefined,
         avatarUrl: u.user_metadata.picture ?? u.user_metadata.avatar_url ?? undefined,
         displayName: profileData?.display_name ?? undefined,
+        role: profileData?.role ?? undefined,
       };
 
       userCache.setUser(userData);
@@ -134,7 +137,7 @@ export function Header() {
       }
     }
 
-    // Listen for custom event when profile is updated
+    // Listen for custom event when profile is updated (including role changes)
     function handleProfileUpdate() {
       // Invalidate cache and reload
       const currentUser = userCache.getUser();
@@ -243,6 +246,27 @@ export function Header() {
                   {user.displayName || user.name || user.email}
                 </span>
               </Link>
+              {user.role && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    background: user.role === 'artist' 
+                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  }}
+                >
+                  {user.role}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={handleSignOut}

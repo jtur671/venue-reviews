@@ -92,46 +92,87 @@ export async function POST(req: NextRequest) {
 
         const data = await response.json();
         
+        // Check for invalid place_id errors
+        if (data.status === 'NOT_FOUND' || data.status === 'INVALID_REQUEST') {
+          results.push({
+            venueId: venue.id,
+            venueName: venue.name,
+            success: false,
+            error: `Invalid place_id: ${data.status}. This venue likely has a fake place_id from test data.`,
+          });
+          continue;
+        }
+        
         if (data.status !== 'OK' || !data.result?.photos || data.result.photos.length === 0) {
           results.push({
             venueId: venue.id,
             venueName: venue.name,
             success: false,
-            error: 'No photos available for this venue',
+            error: data.status === 'OK' ? 'No photos available for this venue' : `Google API error: ${data.status}`,
           });
           continue;
         }
 
-        // Get the first photo
-        const photo = data.result.photos[0];
-        const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${encodeURIComponent(photo.photo_reference)}&key=${apiKey}`;
+        // Prefer a better photo than just photos[0].
+        // Heuristic: take top few photos, prefer landscape + higher resolution.
+        const photos: Array<{ photo_reference: string; width?: number; height?: number }> = data.result.photos;
+        const ranked = [...photos]
+          .filter((p) => p?.photo_reference)
+          .map((p, idx) => {
+            const w = typeof p.width === 'number' ? p.width : 0;
+            const h = typeof p.height === 'number' ? p.height : 0;
+            const isLandscape = w > 0 && h > 0 ? w >= h : true;
+            const area = w > 0 && h > 0 ? w * h : 0;
+            const score =
+              (isLandscape ? 1_000_000_000 : 0) +
+              area +
+              w * 10_000 -
+              idx;
+            return { ref: p.photo_reference, score };
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5);
 
-        // Fetch the photo binary
-        const photoResponse = await fetch(photoUrl);
-        if (!photoResponse.ok) {
+        let picked: {
+          imageBytes: Uint8Array;
+          contentType: string;
+        } | null = null;
+
+        for (const candidate of ranked) {
+          const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${encodeURIComponent(candidate.ref)}&key=${apiKey}`;
+          const photoResponse = await fetch(photoUrl);
+          if (!photoResponse.ok) continue;
+
+          const contentType = photoResponse.headers.get('content-type') || 'image/jpeg';
+          const imageBuffer = await photoResponse.arrayBuffer();
+          const imageBytes = new Uint8Array(imageBuffer);
+
+          // Skip tiny images (often icons/tiles)
+          if (imageBytes.length < 25_000) continue;
+
+          picked = { imageBytes, contentType };
+          break;
+        }
+
+        if (!picked) {
           results.push({
             venueId: venue.id,
             venueName: venue.name,
             success: false,
-            error: `Failed to fetch photo: ${photoResponse.status}`,
+            error: 'Failed to fetch a usable photo (tried multiple candidates)',
           });
           continue;
         }
 
-        // Get the image as a buffer
-        const imageBuffer = await photoResponse.arrayBuffer();
-        const imageBytes = new Uint8Array(imageBuffer);
-
         // Determine file extension
-        const contentType = photoResponse.headers.get('content-type') || 'image/jpeg';
-        const extension = contentType.includes('png') ? 'png' : 'jpg';
+        const extension = picked.contentType.includes('png') ? 'png' : 'jpg';
         const fileName = `${venue.id}-${Date.now()}.${extension}`;
 
         // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('venue-photos')
-          .upload(fileName, imageBytes, {
-            contentType,
+          .upload(fileName, picked.imageBytes, {
+            contentType: picked.contentType,
             upsert: false,
           });
 
