@@ -12,14 +12,14 @@ export function useVenues() {
     setError(null);
 
     try {
-      const timeoutMs = 10_000;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error('Timed out loading venues')), timeoutMs);
-      });
+      // Don't hard-fail on slow networks; just warn if it takes unusually long.
+      const warnAfterMs = 12_000;
+      const warnId = setTimeout(() => {
+        console.warn('Venues are taking longer than usual to load...');
+      }, warnAfterMs);
 
-      const { data, error: fetchError } = await Promise.race([getAllVenues(), timeoutPromise]);
-      if (timeoutId) clearTimeout(timeoutId);
+      const { data, error: fetchError } = await getAllVenues();
+      clearTimeout(warnId);
 
       if (fetchError) {
         console.error('Error loading venues:', fetchError);
