@@ -26,7 +26,7 @@ export default function HomePage() {
   const [creatingVenue, setCreatingVenue] = useState(false);
   const addVenueRef = useRef<HTMLDivElement | null>(null);
 
-  const { venues, loading, refetch: loadVenues } = useVenues();
+  const { venues, loading, error: venuesError, refetch: loadVenues } = useVenues();
   const { popularCityStats, popularCities, recentlyRated, existingVenueLookup } = useVenueStats(venues);
   const { remoteResults, remoteLoading, remoteError, hasQuery } = useRemoteSearch(search, selectedCity);
   
@@ -249,6 +249,13 @@ export default function HomePage() {
               {loading ? (
                 <div className="col-span-3 text-center py-12">
                   <p className="text-slate-400">Loading venues...</p>
+                </div>
+              ) : venuesError ? (
+                <div className="col-span-3 text-center py-12">
+                  <p className="text-slate-400">Couldn&apos;t load venues.</p>
+                  <p className="text-slate-500 text-sm" style={{ marginTop: '0.25rem' }}>
+                    {venuesError}
+                  </p>
                 </div>
               ) : (() => {
                 // Get the 3 most reviewed venues (dynamic, not hardcoded)

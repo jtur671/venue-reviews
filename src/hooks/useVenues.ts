@@ -11,17 +11,30 @@ export function useVenues() {
     setLoading(true);
     setError(null);
 
-    const { data, error: fetchError } = await getAllVenues();
+    try {
+      const timeoutMs = 10_000;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Timed out loading venues')), timeoutMs);
+      });
 
-    if (fetchError) {
-      console.error('Error loading venues:', fetchError);
-      setError(fetchError.message || 'Failed to load venues');
+      const { data, error: fetchError } = await Promise.race([getAllVenues(), timeoutPromise]);
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (fetchError) {
+        console.error('Error loading venues:', fetchError);
+        setError(fetchError.message || 'Failed to load venues');
+        setVenues([]);
+      } else {
+        setVenues(data || []);
+      }
+    } catch (err) {
+      console.error('Unexpected error loading venues:', err);
+      setError('Failed to load venues');
       setVenues([]);
-    } else {
-      setVenues(data || []);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {

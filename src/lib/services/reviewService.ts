@@ -38,26 +38,36 @@ export async function getReviewsByVenueId(venueId: string): Promise<{
   data: Review[] | null;
   error: ReviewServiceError | null;
 }> {
-  const { data, error } = await supabase
-    .from('reviews')
-    .select(
-      'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role'
-    )
-    .eq('venue_id', venueId)
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(
+        'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role'
+      )
+      .eq('venue_id', venueId)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error loading reviews:', error);
+    if (error) {
+      console.error('Error loading reviews:', error);
+      return {
+        data: null,
+        error: {
+          code: error.code,
+          message: 'Failed to load reviews',
+        },
+      };
+    }
+
+    return { data: (data || []) as Review[], error: null };
+  } catch (err) {
+    console.error('Unexpected error loading reviews:', err);
     return {
       data: null,
       error: {
-        code: error.code,
         message: 'Failed to load reviews',
       },
     };
   }
-
-  return { data: (data || []) as Review[], error: null };
 }
 
 /**
@@ -75,39 +85,51 @@ export async function createReview(input: CreateReviewInput): Promise<{
   // For anonymous users, it will be null
   const reviewerRole = input.reviewer_role ?? null;
 
-  const { data, error } = await supabase
-    .from('reviews')
-    .insert({
-      venue_id: input.venue_id,
-      user_id: input.user_id,
-      reviewer_name: input.reviewer_name?.trim() || null,
-      comment: input.comment?.trim() || null,
-      score: input.score,
-      sound_score: input.sound_score,
-      vibe_score: input.vibe_score,
-      staff_score: input.staff_score,
-      layout_score: input.layout_score,
-      reviewer_role: reviewerRole,
-    })
-    .select('id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role')
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .insert({
+        venue_id: input.venue_id,
+        user_id: input.user_id,
+        reviewer_name: input.reviewer_name?.trim() || null,
+        comment: input.comment?.trim() || null,
+        score: input.score,
+        sound_score: input.sound_score,
+        vibe_score: input.vibe_score,
+        staff_score: input.staff_score,
+        layout_score: input.layout_score,
+        reviewer_role: reviewerRole,
+      })
+      .select(
+        'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role'
+      )
+      .single();
 
-  if (error) {
-    console.error('Error creating review:', error);
-    const isDuplicate = error.code === '23505';
+    if (error) {
+      console.error('Error creating review:', error);
+      const isDuplicate = error.code === '23505';
+      return {
+        data: null,
+        error: {
+          code: error.code,
+          message: isDuplicate
+            ? "You've already left a report card for this venue from this browser."
+            : 'Failed to create review',
+          isDuplicate,
+        },
+      };
+    }
+
+    return { data: data as Review, error: null };
+  } catch (err) {
+    console.error('Unexpected error creating review:', err);
     return {
       data: null,
       error: {
-        code: error.code,
-        message: isDuplicate
-          ? "You've already left a report card for this venue from this browser."
-          : 'Failed to create review',
-        isDuplicate,
+        message: 'Failed to create review',
       },
     };
   }
-
-  return { data: data as Review, error: null };
 }
 
 /**
@@ -128,35 +150,47 @@ export async function updateReview(
   // This ensures reviews always reflect the user's current role
   const reviewerRole = input.reviewer_role ?? null;
 
-  const { data, error } = await supabase
-    .from('reviews')
-    .update({
-      reviewer_name: input.reviewer_name?.trim() || null,
-      comment: input.comment?.trim() || null,
-      score: input.score,
-      sound_score: input.sound_score,
-      vibe_score: input.vibe_score,
-      staff_score: input.staff_score,
-      layout_score: input.layout_score,
-      reviewer_role: reviewerRole,
-    })
-    .eq('id', id)
-    .eq('user_id', userId)
-    .select('id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role')
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({
+        reviewer_name: input.reviewer_name?.trim() || null,
+        comment: input.comment?.trim() || null,
+        score: input.score,
+        sound_score: input.sound_score,
+        vibe_score: input.vibe_score,
+        staff_score: input.staff_score,
+        layout_score: input.layout_score,
+        reviewer_role: reviewerRole,
+      })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select(
+        'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role'
+      )
+      .single();
 
-  if (error) {
-    console.error('Error updating review:', error);
+    if (error) {
+      console.error('Error updating review:', error);
+      return {
+        data: null,
+        error: {
+          code: error.code,
+          message: 'Failed to update review',
+        },
+      };
+    }
+
+    return { data: data as Review, error: null };
+  } catch (err) {
+    console.error('Unexpected error updating review:', err);
     return {
       data: null,
       error: {
-        code: error.code,
         message: 'Failed to update review',
       },
     };
   }
-
-  return { data: data as Review, error: null };
 }
 
 /**
@@ -168,21 +202,30 @@ export async function deleteReview(
 ): Promise<{
   error: ReviewServiceError | null;
 }> {
-  const { error } = await supabase
-    .from('reviews')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', userId);
+  try {
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
 
-  if (error) {
-    console.error('Error deleting review:', error);
+    if (error) {
+      console.error('Error deleting review:', error);
+      return {
+        error: {
+          code: error.code,
+          message: 'Failed to delete review',
+        },
+      };
+    }
+
+    return { error: null };
+  } catch (err) {
+    console.error('Unexpected error deleting review:', err);
     return {
       error: {
-        code: error.code,
         message: 'Failed to delete review',
       },
     };
   }
-
-  return { error: null };
 }

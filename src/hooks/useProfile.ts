@@ -38,64 +38,85 @@ export function useProfile(user: UserForProfile) {
       // Check if there's already a pending fetch
       const pending = userCache.getPendingProfileFetch(user.id);
       if (pending) {
-        const cached = await pending;
-        if (!active) return;
-        // Strip cachedAt field
-        setProfile(cached ? { id: cached.id, display_name: cached.display_name, role: cached.role } : null);
-        setLoading(false);
-        return;
+        try {
+          const cached = await pending;
+          if (!active) return;
+          // Strip cachedAt field
+          setProfile(cached ? { id: cached.id, display_name: cached.display_name, role: cached.role } : null);
+          setLoading(false);
+          return;
+        } catch (err) {
+          console.error('Error resolving pending profile fetch:', err);
+          if (!active) return;
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
       }
 
       // Create fetch promise
       const fetchPromise = (async () => {
-        if (!user) return null;
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, display_name, role')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (error || !data) {
-          // On first login, create profile
-          const { data: insertData, error: insertError } = await supabase
+        try {
+          if (!user) return null;
+          
+          const { data, error } = await supabase
             .from('profiles')
-            .insert({ id: user.id, role: null })
             .select('id, display_name, role')
-            .single();
+            .eq('id', user.id)
+            .maybeSingle();
 
-          if (insertError) {
-            console.error('Error creating profile:', insertError);
-            userCache.setProfile(user.id, null);
-            return null;
+          if (error || !data) {
+            // On first login, create profile
+            const { data: insertData, error: insertError } = await supabase
+              .from('profiles')
+              .insert({ id: user.id, role: null })
+              .select('id, display_name, role')
+              .single();
+
+            if (insertError) {
+              console.error('Error creating profile:', insertError);
+              userCache.setProfile(user.id, null);
+              return null;
+            }
+
+            const profileData = insertData as Profile;
+            userCache.setProfile(user.id, profileData);
+            // Return as CachedProfile for type compatibility
+            return {
+              ...profileData,
+              cachedAt: Date.now(),
+            };
           }
 
-          const profileData = insertData as Profile;
+          const profileData = data as Profile;
           userCache.setProfile(user.id, profileData);
           // Return as CachedProfile for type compatibility
           return {
             ...profileData,
             cachedAt: Date.now(),
           };
+        } catch (err) {
+          console.error('Error loading profile:', err);
+          if (user) userCache.setProfile(user.id, null);
+          return null;
         }
-
-        const profileData = data as Profile;
-        userCache.setProfile(user.id, profileData);
-        // Return as CachedProfile for type compatibility
-        return {
-          ...profileData,
-          cachedAt: Date.now(),
-        };
       })();
 
       userCache.setPendingProfileFetch(user.id, fetchPromise);
 
-      const cachedProfile = await fetchPromise;
-      if (!active) return;
+      try {
+        const cachedProfile = await fetchPromise;
+        if (!active) return;
 
-      // Strip cachedAt field
-      setProfile(cachedProfile ? { id: cachedProfile.id, display_name: cachedProfile.display_name, role: cachedProfile.role } : null);
-      setLoading(false);
+        // Strip cachedAt field
+        setProfile(cachedProfile ? { id: cachedProfile.id, display_name: cachedProfile.display_name, role: cachedProfile.role } : null);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error resolving profile fetch:', err);
+        if (!active) return;
+        setProfile(null);
+        setLoading(false);
+      }
     }
 
     // If we have cached data, still fetch fresh data in background

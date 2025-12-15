@@ -11,26 +11,33 @@ export function useAnonUser() {
     let active = true;
 
     async function ensureUser() {
-      const { data } = await supabase.auth.getUser();
+      try {
+        const { data } = await supabase.auth.getUser();
 
-      if (!active) return;
+        if (!active) return;
 
-      if (data.user) {
-        setUser({ id: data.user.id });
+        if (data.user) {
+          setUser({ id: data.user.id });
+          setLoading(false);
+          return;
+        }
+
+        const { data: anonData, error } = await supabase.auth.signInAnonymously();
+        if (!active) return;
+
+        if (!error && anonData.user) {
+          setUser({ id: anonData.user.id });
+        } else {
+          console.error('Anonymous sign-in failed:', error);
+          setUser(null);
+        }
         setLoading(false);
-        return;
-      }
-
-      const { data: anonData, error } = await supabase.auth.signInAnonymously();
-      if (!active) return;
-
-      if (!error && anonData.user) {
-        setUser({ id: anonData.user.id });
-      } else {
-        console.error('Anonymous sign-in failed:', error);
+      } catch (err) {
+        console.error('Error ensuring anonymous user:', err);
+        if (!active) return;
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     ensureUser();

@@ -33,24 +33,34 @@ export async function getAllVenues(): Promise<{
   data: VenueWithStats[] | null;
   error: VenueServiceError | null;
 }> {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)')
-    .order('name', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('venues')
+      .select('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)')
+      .order('name', { ascending: true });
 
-  if (error) {
-    console.error('Error loading venues:', error);
+    if (error) {
+      console.error('Error loading venues:', error);
+      return {
+        data: null,
+        error: {
+          code: error.code,
+          message: 'Failed to load venues',
+        },
+      };
+    }
+
+    const withStats = mapSupabaseVenues(data || []);
+    return { data: withStats, error: null };
+  } catch (err) {
+    console.error('Unexpected error loading venues:', err);
     return {
       data: null,
       error: {
-        code: error.code,
         message: 'Failed to load venues',
       },
     };
   }
-
-  const withStats = mapSupabaseVenues(data || []);
-  return { data: withStats, error: null };
 }
 
 /**
@@ -60,24 +70,34 @@ export async function getVenueById(id: string): Promise<{
   data: Venue | null;
   error: VenueServiceError | null;
 }> {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('id, name, city, country, address, photo_url, google_place_id')
-    .eq('id', id)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('venues')
+      .select('id, name, city, country, address, photo_url, google_place_id')
+      .eq('id', id)
+      .single();
 
-  if (error) {
-    console.error('Error loading venue:', error);
+    if (error) {
+      console.error('Error loading venue:', error);
+      return {
+        data: null,
+        error: {
+          code: error.code,
+          message: error.code === 'PGRST116' ? 'Venue not found' : 'Failed to load venue',
+        },
+      };
+    }
+
+    return { data: data as Venue, error: null };
+  } catch (err) {
+    console.error('Unexpected error loading venue:', err);
     return {
       data: null,
       error: {
-        code: error.code,
-        message: error.code === 'PGRST116' ? 'Venue not found' : 'Failed to load venue',
+        message: 'Failed to load venue',
       },
     };
   }
-
-  return { data: data as Venue, error: null };
 }
 
 /**
@@ -94,25 +114,47 @@ export async function createVenue(input: CreateVenueInput): Promise<{
     ? input.photo_url
     : null;
   
-  const { data, error } = await supabase
-    .from('venues')
-    .insert({
-      name: input.name.trim(),
-      city: input.city.trim(),
-      country: input.country?.trim() || 'USA',
-      address: input.address?.trim() || null,
-      photo_url: googlePhotoUrl ? null : (input.photo_url || null), // Don't store Google URLs directly
-      google_place_id: input.google_place_id || null,
-    })
-    .select('id')
-    .single();
+  let data: { id: string } | null = null;
+  try {
+    const result = await supabase
+      .from('venues')
+      .insert({
+        name: input.name.trim(),
+        city: input.city.trim(),
+        country: input.country?.trim() || 'USA',
+        address: input.address?.trim() || null,
+        photo_url: googlePhotoUrl ? null : (input.photo_url || null), // Don't store Google URLs directly
+        google_place_id: input.google_place_id || null,
+      })
+      .select('id')
+      .single();
 
-  if (error) {
-    console.error('Error creating venue:', error);
+    if (result.error) {
+      console.error('Error creating venue:', result.error);
+      return {
+        data: null,
+        error: {
+          code: result.error.code,
+          message: 'Failed to create venue',
+        },
+      };
+    }
+
+    data = result.data as { id: string };
+  } catch (err) {
+    console.error('Unexpected error creating venue:', err);
     return {
       data: null,
       error: {
-        code: error.code,
+        message: 'Failed to create venue',
+      },
+    };
+  }
+  
+  if (!data?.id) {
+    return {
+      data: null,
+      error: {
         message: 'Failed to create venue',
       },
     };
