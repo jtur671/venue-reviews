@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getAllVenues } from '@/lib/services/venueService';
+import { venuesCache } from '@/lib/cache/venuesCache';
 import { VenueWithStats } from '@/types/venues';
 
 export function useVenues() {
-  const [venues, setVenues] = useState<VenueWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedVenues = venuesCache.getVenues();
+  const [venues, setVenues] = useState<VenueWithStats[]>(cachedVenues || []);
+  const [loading, setLoading] = useState(!cachedVenues);
   const [error, setError] = useState<string | null>(null);
 
   const loadVenues = useCallback(async () => {
@@ -12,21 +14,40 @@ export function useVenues() {
     setError(null);
 
     try {
+      // If there's already a pending fetch, await it instead of starting another.
+      const pending = venuesCache.getPendingFetch();
+      if (pending) {
+        const cached = await pending;
+        if (cached) {
+          setVenues(cached);
+        }
+        setLoading(false);
+        return;
+      }
+
       // Don't hard-fail on slow networks; just warn if it takes unusually long.
       const warnAfterMs = 12_000;
       const warnId = setTimeout(() => {
         console.warn('Venues are taking longer than usual to load...');
       }, warnAfterMs);
 
-      const { data, error: fetchError } = await getAllVenues();
+      const fetchPromise = (async () => {
+        const { data, error: fetchError } = await getAllVenues();
+        if (fetchError) return null;
+        return data || [];
+      })();
+
+      venuesCache.setPendingFetch(fetchPromise);
+
+      const result = await fetchPromise;
       clearTimeout(warnId);
 
-      if (fetchError) {
-        console.error('Error loading venues:', fetchError);
-        setError(fetchError.message || 'Failed to load venues');
+      if (!result) {
+        setError('Failed to load venues');
         setVenues([]);
       } else {
-        setVenues(data || []);
+        setVenues(result);
+        venuesCache.setVenues(result);
       }
     } catch (err) {
       console.error('Unexpected error loading venues:', err);

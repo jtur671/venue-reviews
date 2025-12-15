@@ -34,24 +34,42 @@ export async function getAllVenues(): Promise<{
   error: VenueServiceError | null;
 }> {
   try {
-    const { data, error } = await supabase
-      .from('venues')
-      .select('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)')
-      .order('name', { ascending: true });
+    // In SSR/tests, use direct Supabase client (relative fetch URLs won't work, and unit tests mock Supabase).
+    if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
+      const { data, error } = await supabase
+        .from('venues')
+        .select('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)')
+        .order('name', { ascending: true });
 
-    if (error) {
-      console.error('Error loading venues:', error);
+      if (error) {
+        console.error('Error loading venues:', error);
+        return {
+          data: null,
+          error: {
+            code: error.code,
+            message: 'Failed to load venues',
+          },
+        };
+      }
+
+      const withStats = mapSupabaseVenues(data || []);
+      return { data: withStats, error: null };
+    }
+
+    // In the browser, use our server route so production can edge-cache and avoid slow/flaky browser->Supabase calls.
+    const res = await fetch('/api/venues', { method: 'GET' });
+    const body = (await res.json().catch(() => null)) as { data?: VenueWithStats[]; error?: string } | null;
+
+    if (!res.ok) {
       return {
         data: null,
         error: {
-          code: error.code,
-          message: 'Failed to load venues',
+          message: body?.error || 'Failed to load venues',
         },
       };
     }
 
-    const withStats = mapSupabaseVenues(data || []);
-    return { data: withStats, error: null };
+    return { data: body?.data || [], error: null };
   } catch (err) {
     console.error('Unexpected error loading venues:', err);
     return {
