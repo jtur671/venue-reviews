@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getReviewsByVenueId } from '@/lib/services/reviewService';
 import { Review } from '@/types/venues';
-import { useAnonUser } from './useAnonUser';
 import { reviewsCache } from '@/lib/cache/reviewsCache';
 
-export function useReviews(venueId: string | undefined) {
-  const { user, loading: userLoading } = useAnonUser();
-  
+export function useReviews(venueId: string | undefined, viewerUserId: string | null) {
   // Try to get cached reviews immediately
   const cachedReviews = venueId ? reviewsCache.get(venueId) : null;
   const [reviews, setReviews] = useState<Review[]>(cachedReviews || []);
@@ -78,17 +75,14 @@ export function useReviews(venueId: string | undefined) {
   }, [venueId]);
 
   useEffect(() => {
-    // Only wait for user if we need to determine "my review"
-    // But we can show cached reviews immediately
-    if (venueId && !userLoading) {
-      loadReviews();
-    }
-  }, [venueId, userLoading, loadReviews]);
+    // Reviews can load independently of auth state; "my review" is derived from viewerUserId.
+    if (venueId) loadReviews();
+  }, [venueId, loadReviews]);
 
   const myReview = useMemo(() => {
-    if (!user || !reviews.length) return null;
-    return reviews.find((r) => r.user_id === user.id) || null;
-  }, [reviews, user]);
+    if (!viewerUserId || !reviews.length) return null;
+    return reviews.find((r) => r.user_id === viewerUserId) || null;
+  }, [reviews, viewerUserId]);
 
   const otherReviews = useMemo(() => {
     if (!myReview) return reviews;

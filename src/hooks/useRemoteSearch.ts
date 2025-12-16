@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { RemoteVenue } from '@/types/venues';
-import { useAnonUser } from './useAnonUser';
 import { SEARCH_DEBOUNCE_MS } from '@/constants/ui';
 
 export function useRemoteSearch(search: string, selectedCity: string) {
-  const { user, loading: userLoading } = useAnonUser();
   const [remoteResults, setRemoteResults] = useState<RemoteVenue[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
@@ -12,7 +10,7 @@ export function useRemoteSearch(search: string, selectedCity: string) {
   const hasQuery = search.trim().length > 0 || selectedCity !== 'All';
 
   useEffect(() => {
-    if (!hasQuery || userLoading || !user) {
+    if (!hasQuery) {
       setRemoteResults([]);
       setRemoteError(null);
       setRemoteLoading(false);
@@ -53,7 +51,7 @@ export function useRemoteSearch(search: string, selectedCity: string) {
     }, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
-  }, [hasQuery, search, selectedCity, userLoading, user]);
+  }, [hasQuery, search, selectedCity]);
 
   return {
     remoteResults,

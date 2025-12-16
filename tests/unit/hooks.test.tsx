@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useAnonUser } from '@/hooks/useAnonUser';
+import { useAnonUser, __resetAnonUserForTests } from '@/hooks/useAnonUser';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/lib/supabaseClient';
@@ -25,12 +25,14 @@ describe('Custom Hooks', () => {
     vi.clearAllMocks();
     // Clear cache before each test
     userCache.clear();
+    __resetAnonUserForTests();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     // Clear cache after each test
     userCache.clear();
+    __resetAnonUserForTests();
   });
 
   describe('useAnonUser', () => {
@@ -227,7 +229,7 @@ describe('Custom Hooks', () => {
       expect(mocks.mockFrom).toHaveBeenCalledWith('profiles');
     });
 
-    it('creates profile when it does not exist', async () => {
+    it('creates profile when it does not exist for email users', async () => {
       const mocks = createMockChain();
       (supabase.from as any) = mocks.mockFrom;
 
@@ -237,11 +239,7 @@ describe('Custom Hooks', () => {
       });
 
       mocks.mockSingle.mockResolvedValue({
-        data: {
-          id: 'user-123',
-          display_name: null,
-          role: null,
-        },
+        data: { id: 'user-123', display_name: null, role: null },
         error: null,
       });
 
@@ -258,6 +256,26 @@ describe('Custom Hooks', () => {
         display_name: null,
         role: null,
       });
+    });
+
+    it('returns null when profile does not exist for anonymous users', async () => {
+      const mocks = createMockChain();
+      (supabase.from as any) = mocks.mockFrom;
+
+      mocks.mockMaybeSingle.mockResolvedValue({
+        data: null,
+        error: { code: 'PGRST116' },
+      });
+
+      const { result } = renderHook(() =>
+        useProfile({ id: 'user-123' })
+      );
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.profile).toBeNull();
     });
 
     it('handles profile creation errors', async () => {

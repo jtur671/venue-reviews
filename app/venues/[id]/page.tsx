@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ReviewList } from '@/components/ReviewList';
@@ -14,20 +14,36 @@ import { useAnonUser } from '@/hooks/useAnonUser';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProfile } from '@/hooks/useProfile';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
-import { RoleChoiceModal } from '@/components/RoleChoiceModal';
+import { getStoredRole, type StoredRole } from '@/lib/roleStorage';
+import { LocalRoleChoiceModal } from '@/components/LocalRoleChoiceModal';
 
 export default function VenuePage() {
   const params = useParams<{ id: string }>();
   const venueId = params.id as string;
-  const { user: anonUser, loading: anonUserLoading } = useAnonUser();
+  const { user: anonUser, loading: anonLoading } = useAnonUser();
   const { user: currentUser, loading: currentUserLoading } = useCurrentUser();
-  // Use anonUser if no currentUser (for anonymous users)
-  // Anonymous users also need profiles for the role modal
-  const userForProfile = currentUser || (anonUser ? { id: anonUser.id } : null);
-  const { profile, loading: profileLoading } = useProfile(userForProfile);
+  const isEmailUser = !!currentUser?.email;
+  const { profile, loading: profileLoading } = useProfile(isEmailUser ? currentUser : null);
+
+  const viewerUserId = currentUser?.id ?? anonUser?.id ?? null;
+  const [localRole, setLocalRole] = useState<StoredRole | null>(null);
+
+  useEffect(() => {
+    if (!viewerUserId) {
+      setLocalRole(null);
+      return;
+    }
+    // Read localStorage role after mount (avoid SSR hydration mismatches).
+    setLocalRole(getStoredRole(viewerUserId));
+  }, [viewerUserId]);
+
+  const reviewerRole = (isEmailUser ? profile?.role : localRole) ?? null;
 
   const { venue, loading: venueLoading, error: venueError, refetch: refetchVenue } = useVenue(venueId);
-  const { reviews, myReview, otherReviews, loading: reviewsLoading, refetch: refetchReviews } = useReviews(venueId);
+  const { reviews, myReview, otherReviews, loading: reviewsLoading, refetch: refetchReviews } = useReviews(
+    venueId,
+    viewerUserId
+  );
   const { avgScore, aspectAverages } = useReviewStats(reviews);
 
   const loading = venueLoading || reviewsLoading;
@@ -44,18 +60,8 @@ export default function VenuePage() {
 
   return (
     <div className="page-container">
-      {/* Show modal immediately when profile loads, even if venue is still loading */}
-      {/* Show for both logged in users and anonymous users - only if role is null */}
-      {!profileLoading && !currentUserLoading && !anonUserLoading && profile && profile.role === null && (
-        <RoleChoiceModal
-          profileId={profile.id}
-          initialRole={profile.role as 'artist' | 'fan' | null}
-          onRoleSet={(newRole) => {
-            // Role is updated in database, profile will refresh via useProfile hook
-            // Modal will close automatically when profile.role is no longer null
-          }}
-        />
-      )}
+      {/* Fallback: ensure role prompt appears on venue pages too */}
+      {viewerUserId && !reviewerRole && <LocalRoleChoiceModal userId={viewerUserId} />}
 
       <section className="section">
         <Link href="/" className="back-link">
@@ -144,7 +150,13 @@ export default function VenuePage() {
 
           <ReviewForm
             venueId={venueId}
-            currentUserId={currentUser?.id ?? anonUser?.id ?? null}
+            currentUserId={viewerUserId}
+            reviewerRole={reviewerRole}
+            profileLoading={
+              isEmailUser
+                ? profileLoading || currentUserLoading
+                : anonLoading || currentUserLoading
+            }
             existingReview={myReview ?? null}
             onSubmitted={refetchReviews}
           />

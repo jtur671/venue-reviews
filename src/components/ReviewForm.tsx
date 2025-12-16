@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, type CSSProperties } from 'react';
 import {
   createReview,
   updateReview,
@@ -13,13 +13,13 @@ import { ASPECTS } from '@/constants/aspects';
 import { ERROR_COLOR } from '@/constants/ui';
 import { calculateOverallScore, formatScore } from '@/lib/utils/scores';
 import { formatError } from '@/lib/utils/errors';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useProfile } from '@/hooks/useProfile';
 import { reviewsCache } from '@/lib/cache/reviewsCache';
 
 type ReviewFormProps = {
   venueId: string;
   currentUserId: string | null;
+  reviewerRole: 'artist' | 'fan' | null;
+  profileLoading?: boolean;
   existingReview?: Review | null;
   onSubmitted: () => void;
 };
@@ -27,11 +27,11 @@ type ReviewFormProps = {
 export function ReviewForm({
   venueId,
   currentUserId,
+  reviewerRole,
+  profileLoading = false,
   existingReview,
   onSubmitted,
 }: ReviewFormProps) {
-  const { user: currentUser } = useCurrentUser();
-  const { profile } = useProfile(currentUser);
   const [reviewer, setReviewer] = useState('');
   const [comment, setComment] = useState('');
   const [aspects, setAspects] = useState<Record<AspectKey, number>>(DEFAULT_ASPECTS);
@@ -84,13 +84,17 @@ export function ReviewForm({
       return;
     }
 
-    setSubmitting(true);
+    if (profileLoading) {
+      setError('Loading your profile… please try again.');
+      return;
+    }
 
-    // Always get the latest profile role for logged-in users
-    // This ensures reviewer_role is always current from profiles.role, even if profile was updated
-    // For logged-in users, we fetch from the profile hook which gets the latest from the database
-    // For anonymous users, reviewer_role will be null
-    const currentRole = currentUser ? (profile?.role ?? null) : null;
+    if (!reviewerRole) {
+      setError('Pick Artist or Fan first (one-time) before submitting a review.');
+      return;
+    }
+
+    setSubmitting(true);
 
     if (existingReview) {
       const updateData: UpdateReviewInput = {
@@ -101,7 +105,7 @@ export function ReviewForm({
         vibe_score: aspects.vibe_score,
         staff_score: aspects.staff_score,
         layout_score: aspects.layout_score,
-        reviewer_role: currentRole, // Always update reviewer_role from current profile
+        reviewer_role: reviewerRole,
       };
 
       const { error } = await updateReview(existingReview.id, currentUserId, updateData);
@@ -122,7 +126,7 @@ export function ReviewForm({
         vibe_score: aspects.vibe_score,
         staff_score: aspects.staff_score,
         layout_score: aspects.layout_score,
-        reviewer_role: currentRole, // Always set reviewer_role from current profile for logged-in users
+        reviewer_role: reviewerRole,
       };
 
       const { error } = await createReview(createData);
@@ -175,7 +179,8 @@ export function ReviewForm({
     onSubmitted();
   }
 
-  const isDisabled = submitting || deleting || !currentUserId;
+  const isDisabled =
+    submitting || deleting || !currentUserId || profileLoading || !reviewerRole;
 
   return (
     <form onSubmit={handleSubmit} className="section card">
@@ -188,6 +193,11 @@ export function ReviewForm({
             ? 'Update your ratings and notes after another show.'
             : "Rate the room so other people know what they're walking into before they book a show."}
         </p>
+        {!profileLoading && !reviewerRole && (
+          <p className="section-subtitle" style={{ marginTop: '0.35rem' }}>
+            Choose <strong>Artist</strong> or <strong>Fan</strong> once to enable submitting.
+          </p>
+        )}
       </div>
 
       <div className="form-field">
@@ -226,7 +236,7 @@ export function ReviewForm({
                   {
                     '--slider-color': color,
                     '--slider-fill': `${fillPercentage}%`,
-                  } as React.CSSProperties
+                  } as CSSProperties
                 }
               />
             </div>

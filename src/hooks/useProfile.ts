@@ -65,8 +65,24 @@ export function useProfile(user: UserForProfile) {
             .eq('id', user.id)
             .maybeSingle();
 
-          if (error || !data) {
-            // On first login, create profile
+          // Supabase PostgREST uses PGRST116 for "no rows" in some client versions/setups.
+          // Treat it as a non-error.
+          const isNoRow = (error as any)?.code === 'PGRST116';
+          if (error && !isNoRow) {
+            console.error('Error loading profile:', error);
+            userCache.setProfile(user.id, null);
+            return null;
+          }
+
+          if (!data) {
+            // If the user is a real email login, it's common to allow authenticated inserts via RLS.
+            // For anonymous sessions, inserts are often blocked; those use localStorage-backed role selection.
+            const hasEmail = (user as any)?.email && String((user as any).email).length > 0;
+            if (!hasEmail) {
+              userCache.setProfile(user.id, null);
+              return null;
+            }
+
             const { data: insertData, error: insertError } = await supabase
               .from('profiles')
               .insert({ id: user.id, role: null })
@@ -81,11 +97,7 @@ export function useProfile(user: UserForProfile) {
 
             const profileData = insertData as Profile;
             userCache.setProfile(user.id, profileData);
-            // Return as CachedProfile for type compatibility
-            return {
-              ...profileData,
-              cachedAt: Date.now(),
-            };
+            return { ...profileData, cachedAt: Date.now() };
           }
 
           const profileData = data as Profile;
@@ -124,6 +136,26 @@ export function useProfile(user: UserForProfile) {
 
     return () => {
       active = false;
+    };
+  }, [user]);
+
+  // Keep profile state in sync with cache updates (e.g. role selection modal).
+  useEffect(() => {
+    if (!user) return;
+
+    function handleProfileUpdated() {
+      try {
+        const cached = userCache.getProfile(user.id);
+        setProfile(cached ? { id: cached.id, display_name: cached.display_name, role: cached.role } : null);
+        setLoading(false);
+      } catch {
+        // ignore
+      }
+    }
+
+    window.addEventListener('profileUpdated', handleProfileUpdated);
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdated);
     };
   }, [user]);
 

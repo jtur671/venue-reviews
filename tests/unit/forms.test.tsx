@@ -16,14 +16,6 @@ vi.mock('@/lib/services/venueService', () => ({
   createVenue: vi.fn(),
 }));
 
-vi.mock('@/hooks/useCurrentUser', () => ({
-  useCurrentUser: vi.fn(() => ({ user: null, loading: false })),
-}));
-
-vi.mock('@/hooks/useProfile', () => ({
-  useProfile: vi.fn(() => ({ profile: null, loading: false })),
-}));
-
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -43,8 +35,6 @@ vi.mock('@/lib/supabaseClient', () => ({
 
 import { createReview, updateReview, deleteReview } from '@/lib/services/reviewService';
 import { createVenue } from '@/lib/services/venueService';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useProfile } from '@/hooks/useProfile';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -57,9 +47,6 @@ Object.defineProperty(Element.prototype, 'scrollIntoView', {
 describe('Form Components', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset mocks to default behavior
-    (useCurrentUser as any).mockReturnValue({ user: null, loading: false });
-    (useProfile as any).mockReturnValue({ profile: null, loading: false });
   });
 
   describe('ReviewForm', () => {
@@ -67,6 +54,8 @@ describe('Form Components', () => {
     const defaultProps = {
       venueId: 'venue-123',
       currentUserId: 'user-123',
+      reviewerRole: 'artist' as const,
+      profileLoading: false,
       existingReview: null,
       onSubmitted: mockOnSubmitted,
     };
@@ -195,19 +184,10 @@ describe('Form Components', () => {
       expect(createReview).not.toHaveBeenCalled();
     });
 
-    it('uses profile role for logged-in users', async () => {
-      (useCurrentUser as any).mockReturnValue({
-        user: { id: 'user-123', email: 'test@example.com' },
-        loading: false,
-      });
-      (useProfile as any).mockReturnValue({
-        profile: { id: 'user-123', role: 'artist', display_name: 'Test User' },
-        loading: false,
-      });
-
+    it('passes reviewerRole through to createReview', async () => {
       (createReview as any).mockResolvedValue({ data: { id: 'new-review' }, error: null });
 
-      render(<ReviewForm {...defaultProps} />);
+      render(<ReviewForm {...defaultProps} reviewerRole="fan" />);
 
       const form = document.querySelector('form');
       if (form) {
@@ -217,7 +197,7 @@ describe('Form Components', () => {
       await waitFor(() => {
         expect(createReview).toHaveBeenCalled();
         const callArgs = (createReview as any).mock.calls[0][0];
-        expect(callArgs.reviewer_role).toBe('artist');
+        expect(callArgs.reviewer_role).toBe('fan');
       });
     });
   });

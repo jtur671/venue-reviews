@@ -7,6 +7,8 @@ import { supabase, getSupabaseConfigError } from '@/lib/supabaseClient';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { userCache } from '@/lib/cache/userCache';
 import { LoginModal } from '@/components/LoginModal';
+import { getStoredRole } from '@/lib/roleStorage';
+import { useAnonUser } from '@/hooks/useAnonUser';
 
 type CurrentUser = {
   id: string;
@@ -21,6 +23,7 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const supabaseConfigError = getSupabaseConfigError();
+  const { user: anonUser } = useAnonUser();
   const [user, setUser] = useState<CurrentUser | null>(() => {
     const cachedUser = userCache.getUser();
     if (!cachedUser) return null;
@@ -78,19 +81,17 @@ export function Header() {
         // Fetch display name and role from profiles table (use cache if available)
         let profileData = cachedProfile;
         if (!cachedProfile) {
-          const { data: fetchedProfile } = await supabase
+          const { data: fetchedProfile, error: profileError } = await supabase
             .from('profiles')
             .select('display_name, role')
             .eq('id', u.id)
             .maybeSingle();
 
+          if (profileError) {
+            console.error('Error loading header profile:', profileError);
+          }
           profileData = fetchedProfile
-            ? {
-                id: u.id,
-                display_name: fetchedProfile.display_name,
-                role: fetchedProfile.role,
-                cachedAt: Date.now(),
-              }
+            ? { id: u.id, display_name: fetchedProfile.display_name, role: fetchedProfile.role, cachedAt: Date.now() }
             : null;
           if (profileData) {
             userCache.setProfile(u.id, profileData);
@@ -135,11 +136,15 @@ export function Header() {
           // Check cache for profile
           let profileData = userCache.getProfile(u.id);
           if (!profileData) {
-            const { data: fetchedProfile } = await supabase
+            const { data: fetchedProfile, error: profileError } = await supabase
               .from('profiles')
               .select('display_name, role')
               .eq('id', u.id)
               .maybeSingle();
+
+            if (profileError) {
+              console.error('Error loading header profile (auth change):', profileError);
+            }
             profileData = fetchedProfile
               ? { id: u.id, display_name: fetchedProfile.display_name, role: fetchedProfile.role, cachedAt: Date.now() }
               : null;
@@ -154,7 +159,10 @@ export function Header() {
             name: u.user_metadata.full_name ?? undefined,
             avatarUrl: u.user_metadata.picture ?? u.user_metadata.avatar_url ?? undefined,
             displayName: profileData?.display_name ?? undefined,
-            role: profileData?.role ?? undefined,
+          role:
+            profileData?.role ??
+            // Anonymous sessions: use local role storage as fallback.
+            (!u.email ? (getStoredRole(u.id) ?? undefined) : undefined),
           };
 
           userCache.setUser(userData);
@@ -320,11 +328,11 @@ export function Header() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
+                    gap: '0.35rem',
                     padding: '0.25rem 0.75rem',
                     borderRadius: '999px',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     background: user.role === 'artist' 
                       ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
@@ -333,7 +341,8 @@ export function Header() {
                     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                   }}
                 >
-                  {user.role}
+                  <span aria-hidden="true">{user.role === 'artist' ? '🎤' : '🎟️'}</span>
+                  <span>{user.role === 'artist' ? 'Artist' : 'Fan'}</span>
                 </span>
               )}
               <button
@@ -345,15 +354,80 @@ export function Header() {
                 Sign out
               </button>
             </>
+          ) : user ? (
+            <>
+              {user.role && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.02em',
+                    background:
+                      user.role === 'artist'
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  }}
+                  title="Role is set once and cannot be changed"
+                >
+                  <span aria-hidden="true">{user.role === 'artist' ? '🎤' : '🎟️'}</span>
+                  <span>{user.role === 'artist' ? 'Artist' : 'Fan'}</span>
+                </span>
+              )}
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => setShowLoginModal(true)}
+                style={{ fontSize: '0.8rem', paddingInline: '0.8rem' }}
+              >
+                Sign in
+              </button>
+            </>
           ) : (
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => setShowLoginModal(true)}
-              style={{ fontSize: '0.8rem', paddingInline: '0.8rem' }}
-            >
-              Sign in
-            </button>
+            <>
+              {(() => {
+                const localRole = getStoredRole(anonUser?.id ?? null);
+                if (!localRole) return null;
+                return (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '999px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.02em',
+                      background:
+                        localRole === 'artist'
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                      color: '#ffffff',
+                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    }}
+                    title="Role is set once and cannot be changed"
+                  >
+                    <span aria-hidden="true">{localRole === 'artist' ? '🎤' : '🎟️'}</span>
+                    <span>{localRole === 'artist' ? 'Artist' : 'Fan'}</span>
+                  </span>
+                );
+              })()}
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => setShowLoginModal(true)}
+                style={{ fontSize: '0.8rem', paddingInline: '0.8rem' }}
+              >
+                Sign in
+              </button>
+            </>
           )}
           <ThemeToggle />
         </div>

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "cleanup-test-data": "tsx scripts/cleanup-test-data.ts"
+    "cleanup-test-data": "tsx scripts/cleanup-test-data.ts",
+    "backfill-google-place-ids": "tsx scripts/backfill-google-place-ids.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",

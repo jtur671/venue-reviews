@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/Header';
+import { RoleGate } from '@/components/RoleGate';
 
 export const metadata: Metadata = {
   title: 'Venue Reviews',
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body>
         <div className="app-shell">
           <Header />
+          <RoleGate />
 
           <main className="app-main">{children}</main>
 

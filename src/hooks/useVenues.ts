@@ -4,9 +4,11 @@ import { venuesCache } from '@/lib/cache/venuesCache';
 import { VenueWithStats } from '@/types/venues';
 
 export function useVenues() {
-  const cachedVenues = venuesCache.getVenues();
-  const [venues, setVenues] = useState<VenueWithStats[]>(cachedVenues || []);
-  const [loading, setLoading] = useState(!cachedVenues);
+  // IMPORTANT (hydration): do NOT read localStorage-backed cache during the initial render.
+  // Next will server-render this Client Component; if the client renders cached venues immediately,
+  // the HTML won't match and hydration will fail.
+  const [venues, setVenues] = useState<VenueWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadVenues = useCallback(async () => {
@@ -59,6 +61,14 @@ export function useVenues() {
   }, []);
 
   useEffect(() => {
+    // After mount, hydrate from cache for instant perceived performance.
+    // This runs only on the client and won't cause hydration mismatch.
+    const cachedVenues = venuesCache.getVenues();
+    if (cachedVenues && cachedVenues.length > 0) {
+      setVenues(cachedVenues);
+      setLoading(false);
+    }
+
     // Load venues immediately - they're public data and don't require authentication
     // Use setTimeout to avoid calling setState synchronously in effect
     const timeoutId = setTimeout(() => {

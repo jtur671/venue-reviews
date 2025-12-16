@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
+import { rankVenuePhotoWithGemini } from '@/lib/ai/geminiVenuePhotoRanker';
+
+function isUuid(value: string): boolean {
+  // Accept any RFC4122-ish UUID (v1-v5) since Supabase ids can vary.
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
 
 /**
  * API route to backfill photos for existing venues that have google_place_id but no photo_url
@@ -20,6 +28,8 @@ export async function POST(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     let limit = parseInt(searchParams.get('limit') || '10', 10);
     let venueId = searchParams.get('venueId');
+    const useAi = searchParams.get('ai') !== '0'; // default on if key exists
+    const force = searchParams.get('force') === '1';
     
     // Also check request body for venueId (for client-side calls)
     try {
@@ -31,6 +41,13 @@ export async function POST(req: NextRequest) {
       // Body parsing failed or empty, use query params only
     }
 
+    if (venueId && !isUuid(venueId)) {
+      return NextResponse.json(
+        { error: 'venueId must be a UUID', details: `Received: "${venueId}"` },
+        { status: 400 }
+      );
+    }
+
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -39,12 +56,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find venues that need photos
+    // Find venues that need photos (or force refresh)
     let query = supabase
       .from('venues')
       .select('id, name, google_place_id')
       .not('google_place_id', 'is', null)
-      .is('photo_url', null);
+      .order('name', { ascending: true });
+
+    // Default behavior: only fill missing photos
+    if (!force) {
+      query = query.is('photo_url', null);
+    }
 
     if (venueId) {
       query = query.eq('id', venueId);
@@ -114,7 +136,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Prefer a better photo than just photos[0].
-        // Heuristic: take top few photos, prefer landscape + higher resolution.
+        // Step 1: rank candidates by simple heuristic (landscape + resolution).
         const photos: Array<{ photo_reference: string; width?: number; height?: number }> = data.result.photos;
         const ranked = [...photos]
           .filter((p) => p?.photo_reference)
@@ -131,15 +153,62 @@ export async function POST(req: NextRequest) {
             return { ref: p.photo_reference, score };
           })
           .sort((a, b) => b.score - a.score)
-          .slice(0, 5);
+          .slice(0, 8);
 
-        let picked: {
-          imageBytes: Uint8Array;
-          contentType: string;
-        } | null = null;
+        // Step 2 (optional): ask Gemini to pick best hero photo among the top few candidates.
+        let chosenRef: string | null = null;
+        if (useAi && process.env.GEMINI_API_KEY && ranked.length > 1) {
+          const topForAi = ranked.slice(0, 4);
 
-        for (const candidate of ranked) {
-          const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${encodeURIComponent(candidate.ref)}&key=${apiKey}`;
+          const candidatesForAi: Array<{ label: string; mimeType: string; base64: string; ref: string }> = [];
+          for (let i = 0; i < topForAi.length; i++) {
+            const ref = topForAi[i].ref;
+            const label = String.fromCharCode('A'.charCodeAt(0) + i);
+            const thumbUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=640&photo_reference=${encodeURIComponent(ref)}&key=${apiKey}`;
+            const thumbRes = await fetch(thumbUrl);
+            if (!thumbRes.ok) continue;
+            const mimeType = thumbRes.headers.get('content-type') || 'image/jpeg';
+            const buf = Buffer.from(await thumbRes.arrayBuffer());
+
+            // Skip tiny images (often icons/tiles)
+            if (buf.byteLength < 25_000) continue;
+
+            candidatesForAi.push({
+              label,
+              mimeType,
+              base64: buf.toString('base64'),
+              ref,
+            });
+          }
+
+          if (candidatesForAi.length >= 2) {
+            const choiceLabel = await rankVenuePhotoWithGemini({
+              venueName: venue.name,
+              venueCity: null,
+              candidates: candidatesForAi.map((c) => ({
+                label: c.label,
+                mimeType: c.mimeType,
+                base64: c.base64,
+              })),
+            });
+
+            if (choiceLabel) {
+              const chosen = candidatesForAi.find((c) => c.label.toUpperCase() === choiceLabel);
+              chosenRef = chosen?.ref || null;
+            }
+          }
+        }
+
+        // Step 3: fetch & cache the chosen photo (fallback to first usable by heuristic).
+        let picked: { imageBytes: Uint8Array; contentType: string } | null = null;
+
+        const refsToTry = [
+          ...(chosenRef ? [chosenRef] : []),
+          ...ranked.map((c) => c.ref).filter((r) => r !== chosenRef),
+        ];
+
+        for (const ref of refsToTry) {
+          const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${encodeURIComponent(ref)}&key=${apiKey}`;
           const photoResponse = await fetch(photoUrl);
           if (!photoResponse.ok) continue;
 

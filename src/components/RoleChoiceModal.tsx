@@ -83,6 +83,10 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
     }
     
     onRoleSet(role);
+    // Notify Header (and any listeners) to refresh role display.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
+    }
     setOpen(false);
   }
 
