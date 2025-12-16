@@ -29,36 +29,53 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
     setSaving(true);
     setError(null);
 
-    // 1) Create profile row with role (required by DB before reviews can be inserted).
-    //    Immutable: do not overwrite if it already exists.
-    const { error: upsertError } = await supabase
-      .from('profiles')
-      .upsert({ id: userId, role }, { onConflict: 'id', ignoreDuplicates: true });
+    try {
+      // 1) Create profile row with role (required by DB before reviews can be inserted).
+      //    Immutable: do not overwrite if it already exists.
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({ id: userId, role }, { onConflict: 'id', ignoreDuplicates: true });
 
-    if (upsertError) {
-      console.error('Error creating profile with role:', upsertError);
+      if (upsertError) {
+        console.error('Error creating profile with role:', upsertError);
+        setSaving(false);
+        setError('Could not save your role. Please try again.');
+        return;
+      }
+
+      // 2) Store local role for fast UI (immutable unless storage cleared).
+      //    Even if profile existed already, store the true role from DB to keep UI consistent.
+      //    Use the role we just set if the fetch fails (graceful degradation).
+      let finalRole = role;
+      try {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+        if (profileRow?.role === 'artist' || profileRow?.role === 'fan') {
+          finalRole = profileRow.role;
+        }
+      } catch (fetchError) {
+        // Non-fatal: use the role we just set
+        console.warn('Could not fetch profile after upsert, using selected role:', fetchError);
+      }
+
+      setStoredRoleOnce(userId, finalRole);
+
       setSaving(false);
-      setError('Could not save your role. Please try again.');
-      return;
+      onRoleSet?.(finalRole);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+      }
+      setOpen(false);
+    } catch (err) {
+      // Catch any unexpected errors to prevent stuck "Saving..." state
+      console.error('Unexpected error in chooseRole:', err);
+      setSaving(false);
+      setError('An unexpected error occurred. Please try again.');
     }
-
-    // 2) Store local role for fast UI (immutable unless storage cleared).
-    //    Even if profile existed already, store the true role from DB to keep UI consistent.
-    const { data: profileRow } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
-
-    const finalRole = (profileRow?.role === 'artist' || profileRow?.role === 'fan') ? profileRow.role : role;
-    setStoredRoleOnce(userId, finalRole);
-
-    setSaving(false);
-    onRoleSet?.(finalRole);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('profileUpdated'));
-    }
-    setOpen(false);
   }
 
   return (
