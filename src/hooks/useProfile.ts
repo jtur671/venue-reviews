@@ -125,6 +125,7 @@ export function useProfile(user: UserForProfile) {
     if (!user) return;
 
     function handleProfileUpdated() {
+      if (!user) return;
       try {
         const cached = userCache.getProfile(user.id);
         setProfile(cached ? { id: cached.id, display_name: cached.display_name, role: cached.role } : null);
