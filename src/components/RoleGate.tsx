@@ -26,18 +26,11 @@ export function RoleGate() {
 
   // Logged-in *email* users: prefer profiles.role
   if (isEmailUser && currentUser?.id) {
-    if (!profile || profile.role === null) {
-      // If profile row doesn't exist, RoleChoiceModal may fail to persist depending on RLS;
-      // but many setups create the profile on account page or via DB triggers.
-      if (!profile) return null;
-      return (
-        <RoleChoiceModal
-          profileId={profile.id}
-          initialRole={profile.role}
-          onRoleSet={() => {}}
-        />
-      );
+    if (!profile) {
+      // No profile yet: prompt and create it with chosen role.
+      return <RoleChoiceModal profileId={currentUser.id} initialRole={null} onRoleSet={() => {}} />;
     }
+    // If profile exists, role is already set (DB enforces NOT NULL).
     return null;
   }
 

@@ -75,29 +75,10 @@ export function useProfile(user: UserForProfile) {
           }
 
           if (!data) {
-            // If the user is a real email login, it's common to allow authenticated inserts via RLS.
-            // For anonymous sessions, inserts are often blocked; those use localStorage-backed role selection.
-            const hasEmail = (user as any)?.email && String((user as any).email).length > 0;
-            if (!hasEmail) {
-              userCache.setProfile(user.id, null);
-              return null;
-            }
-
-            const { data: insertData, error: insertError } = await supabase
-              .from('profiles')
-              .insert({ id: user.id, role: null })
-              .select('id, display_name, role')
-              .single();
-
-            if (insertError) {
-              console.error('Error creating profile:', insertError);
-              userCache.setProfile(user.id, null);
-              return null;
-            }
-
-            const profileData = insertData as Profile;
-            userCache.setProfile(user.id, profileData);
-            return { ...profileData, cachedAt: Date.now() };
+            // Do not auto-create profiles here. This app's DB requires profiles.role to be NOT NULL,
+            // so the role must be chosen first; profile creation happens at role-selection time.
+            userCache.setProfile(user.id, null);
+            return null;
           }
 
           const profileData = data as Profile;

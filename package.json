@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "vitest",
     "cleanup-test-data": "tsx scripts/cleanup-test-data.ts",
-    "backfill-google-place-ids": "tsx scripts/backfill-google-place-ids.ts"
+    "backfill-google-place-ids": "tsx scripts/backfill-google-place-ids.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "PWDEBUG=1 playwright test --headed"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
@@ -18,6 +21,7 @@
     "react-dom": "19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

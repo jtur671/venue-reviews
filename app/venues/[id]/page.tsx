@@ -61,7 +61,12 @@ export default function VenuePage() {
   return (
     <div className="page-container">
       {/* Fallback: ensure role prompt appears on venue pages too */}
-      {viewerUserId && !reviewerRole && <LocalRoleChoiceModal userId={viewerUserId} />}
+      {viewerUserId && !reviewerRole && (
+        <LocalRoleChoiceModal
+          userId={viewerUserId}
+          onRoleSet={(r) => setLocalRole(r)}
+        />
+      )}
 
       <section className="section">
         <Link href="/" className="back-link">

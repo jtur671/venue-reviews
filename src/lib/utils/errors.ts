@@ -15,6 +15,11 @@ export function createErrorMessage(error: unknown, defaultMessage: string): stri
   if (error instanceof Error) {
     return error.message || defaultMessage;
   }
+  // Handle common "error-like" objects (e.g. our service-layer errors)
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const msg = (error as any).message;
+    if (typeof msg === 'string' && msg.trim().length > 0) return msg;
+  }
   if (typeof error === 'string') {
     return error;
   }

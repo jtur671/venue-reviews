@@ -7,7 +7,7 @@ import { supabase, getSupabaseConfigError } from '@/lib/supabaseClient';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { userCache } from '@/lib/cache/userCache';
 import { LoginModal } from '@/components/LoginModal';
-import { getStoredRole } from '@/lib/roleStorage';
+import { clearAllStoredRoles, getStoredRole } from '@/lib/roleStorage';
 import { useAnonUser } from '@/hooks/useAnonUser';
 
 type CurrentUser = {
@@ -104,7 +104,10 @@ export function Header() {
           name: u.user_metadata.full_name ?? undefined,
           avatarUrl: u.user_metadata.picture ?? u.user_metadata.avatar_url ?? undefined,
           displayName: profileData?.display_name ?? undefined,
-          role: profileData?.role ?? undefined,
+          role:
+            profileData?.role ??
+            // Anonymous sessions: use local role storage as fallback.
+            (!u.email ? (getStoredRole(u.id) ?? undefined) : undefined),
         };
 
         userCache.setUser(userData);
@@ -232,6 +235,33 @@ export function Header() {
       window.location.href = '/';
     } catch (err) {
       console.error('Unexpected error signing out:', err);
+    }
+  }
+
+  async function handleClearProfileDevOnly() {
+    const ok = confirm(
+      'Clear local profile + role and reset session?\n\nThis is a temporary dev tool. It will:\n- clear cached user/profile\n- clear stored Artist/Fan role\n- sign out (including anonymous)\n- reload the page'
+    );
+    if (!ok) return;
+
+    try {
+      // Best-effort: delete this user's reviews + profile from Supabase first.
+      // (Helps you retest flows cleanly.) This may be restricted by RLS in some setups.
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id ?? null;
+      if (userId) {
+        await supabase.from('reviews').delete().eq('user_id', userId);
+        await supabase.from('profiles').delete().eq('id', userId);
+      }
+
+      // Clear role + caches first (works even if signOut fails).
+      clearAllStoredRoles();
+      userCache.clear();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Dev clear profile failed:', err);
+    } finally {
+      window.location.href = '/';
     }
   }
 
@@ -428,6 +458,17 @@ export function Header() {
                 Sign in
               </button>
             </>
+          )}
+          {process.env.NODE_ENV !== 'production' && (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={handleClearProfileDevOnly}
+              style={{ fontSize: '0.8rem', paddingInline: '0.8rem' }}
+              title="Dev-only: clears cached profile + stored role"
+            >
+              Clear profile
+            </button>
           )}
           <ThemeToggle />
         </div>

@@ -41,30 +41,31 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
   async function chooseRole(role: UserRole) {
     setSaving(true);
     
-    // IMPORTANT: Role is immutable once set. Only allow update if role is currently null.
-    // Use .is('role', null) to enforce immutability at database level.
+    // Our DB enforces profiles.role NOT NULL, so "no role yet" means "no profile row yet".
+    // Create the profile row with the chosen role; if it already exists, do not overwrite (immutable).
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert({ id: profileId, role }, { onConflict: 'id', ignoreDuplicates: true });
+
+    if (upsertError) {
+      console.error('Error setting role (profile upsert):', upsertError);
+      setSaving(false);
+      setRoleSelected(true);
+      setOpen(false);
+      return;
+    }
+
+    // Fetch the stored role so we don't lie if the row already existed.
     const { data, error } = await supabase
       .from('profiles')
-      .update({ role })
+      .select('id, display_name, role')
       .eq('id', profileId)
-      .is('role', null) // Only update if role is null (immutable constraint)
-      .select('role')
       .single();
     
     setSaving(false);
     
     if (error || !data) {
-      // If no rows were updated (role already set), close modal silently
-      // This handles the immutable constraint
-      console.error('Error setting role (may be immutable):', error);
-      setRoleSelected(true);
-      setOpen(false);
-      return;
-    }
-    
-    // Verify the role was actually set
-    if (data.role !== role) {
-      // Role wasn't set - likely because it was already set (immutable)
+      console.error('Error loading profile after role set:', error);
       setRoleSelected(true);
       setOpen(false);
       return;
@@ -74,15 +75,13 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
     setRoleSelected(true);
     
     // Update cache
-    const cachedProfile = userCache.getProfile(profileId);
-    if (cachedProfile) {
-      userCache.setProfile(profileId, {
-        ...cachedProfile,
-        role,
-      });
-    }
+    userCache.setProfile(profileId, {
+      id: data.id,
+      display_name: data.display_name ?? null,
+      role: data.role,
+    });
     
-    onRoleSet(role);
+    onRoleSet(data.role);
     // Notify Header (and any listeners) to refresh role display.
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('profileUpdated'));

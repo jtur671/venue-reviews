@@ -30,3 +30,27 @@ export function setStoredRoleOnce(userId: string, role: StoredRole): boolean {
   }
 }
 
+export function clearStoredRole(userId: string | null | undefined): void {
+  if (!userId) return;
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(`${KEY_PREFIX}${userId}`);
+  } catch {
+    // ignore
+  }
+}
+
+export function clearAllStoredRoles(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (key.startsWith(KEY_PREFIX)) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+

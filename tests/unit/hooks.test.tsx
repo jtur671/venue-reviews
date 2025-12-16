@@ -229,18 +229,13 @@ describe('Custom Hooks', () => {
       expect(mocks.mockFrom).toHaveBeenCalledWith('profiles');
     });
 
-    it('creates profile when it does not exist for email users', async () => {
+    it('returns null when profile does not exist (profile created at role-selection time)', async () => {
       const mocks = createMockChain();
       (supabase.from as any) = mocks.mockFrom;
 
       mocks.mockMaybeSingle.mockResolvedValue({
         data: null,
         error: { code: 'PGRST116' },
-      });
-
-      mocks.mockSingle.mockResolvedValue({
-        data: { id: 'user-123', display_name: null, role: null },
-        error: null,
       });
 
       const { result } = renderHook(() =>
@@ -251,11 +246,7 @@ describe('Custom Hooks', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.profile).toEqual({
-        id: 'user-123',
-        display_name: null,
-        role: null,
-      });
+      expect(result.current.profile).toBeNull();
     });
 
     it('returns null when profile does not exist for anonymous users', async () => {
