@@ -18,6 +18,7 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roleSelected, setRoleSelected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize: if role is null, show the modal
   useEffect(() => {
@@ -40,53 +41,71 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
 
   async function chooseRole(role: UserRole) {
     setSaving(true);
+    setError(null);
     
-    // Our DB enforces profiles.role NOT NULL, so "no role yet" means "no profile row yet".
-    // Create the profile row with the chosen role; if it already exists, do not overwrite (immutable).
-    const { error: upsertError } = await supabase
-      .from('profiles')
-      .upsert({ id: profileId, role }, { onConflict: 'id', ignoreDuplicates: true });
+    try {
+      // Add timeout wrapper to prevent hanging requests
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      );
 
-    if (upsertError) {
-      console.error('Error setting role (profile upsert):', upsertError);
+      // Our DB enforces profiles.role NOT NULL, so "no role yet" means "no profile row yet".
+      // Create the profile row with the chosen role; if it already exists, do not overwrite (immutable).
+      const upsertPromise = supabase
+        .from('profiles')
+        .upsert({ id: profileId, role }, { onConflict: 'id', ignoreDuplicates: true });
+
+      const { error: upsertError } = await Promise.race([upsertPromise, timeoutPromise]) as any;
+
+      if (upsertError) {
+        console.error('Error setting role (profile upsert):', upsertError);
+        setSaving(false);
+        setError('Could not save your role. Please try again.');
+        return;
+      }
+
+      // Fetch the stored role so we don't lie if the row already existed.
+      const fetchPromise = supabase
+        .from('profiles')
+        .select('id, display_name, role')
+        .eq('id', profileId)
+        .single();
+      
+      const { data, error: fetchError } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      
+      if (fetchError || !data) {
+        console.error('Error loading profile after role set:', fetchError);
+        setSaving(false);
+        setError('Could not load your profile. Please refresh the page.');
+        return;
+      }
+      
+      // Mark that role has been selected - this prevents modal from reopening
+      setRoleSelected(true);
       setSaving(false);
-      setRoleSelected(true);
+      
+      // Update cache
+      userCache.setProfile(profileId, {
+        id: data.id,
+        display_name: data.display_name ?? null,
+        role: data.role,
+      });
+      
+      onRoleSet(data.role);
+      // Notify Header (and any listeners) to refresh role display.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('profileUpdated'));
+      }
       setOpen(false);
-      return;
+    } catch (err) {
+      // Catch any unexpected errors to prevent stuck "Saving..." state
+      console.error('Unexpected error in chooseRole:', err);
+      setSaving(false);
+      const errorMessage = err instanceof Error && err.message === 'Request timeout'
+        ? 'Request timed out. Please check your connection and try again.'
+        : 'An unexpected error occurred. Please try again.';
+      setError(errorMessage);
     }
-
-    // Fetch the stored role so we don't lie if the row already existed.
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, display_name, role')
-      .eq('id', profileId)
-      .single();
-    
-    setSaving(false);
-    
-    if (error || !data) {
-      console.error('Error loading profile after role set:', error);
-      setRoleSelected(true);
-      setOpen(false);
-      return;
-    }
-    
-    // Mark that role has been selected - this prevents modal from reopening
-    setRoleSelected(true);
-    
-    // Update cache
-    userCache.setProfile(profileId, {
-      id: data.id,
-      display_name: data.display_name ?? null,
-      role: data.role,
-    });
-    
-    onRoleSet(data.role);
-    // Notify Header (and any listeners) to refresh role display.
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('profileUpdated'));
-    }
-    setOpen(false);
   }
 
   return (
@@ -99,6 +118,11 @@ export function RoleChoiceModal({ profileId, initialRole, onRoleSet }: Props) {
           We use this once to separate <strong>artist</strong> scores from <strong>fan</strong> scores. You
           won&apos;t be able to change it yourself later.
         </p>
+        {error && (
+          <p className="form-error" style={{ marginBottom: '0.75rem' }}>
+            {error}
+          </p>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <button
             type="button"

@@ -30,11 +30,18 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
     setError(null);
 
     try {
+      // Add timeout wrapper to prevent hanging requests
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      );
+
       // 1) Create profile row with role (required by DB before reviews can be inserted).
       //    Immutable: do not overwrite if it already exists.
-      const { error: upsertError } = await supabase
+      const upsertPromise = supabase
         .from('profiles')
         .upsert({ id: userId, role }, { onConflict: 'id', ignoreDuplicates: true });
+
+      const { error: upsertError } = await Promise.race([upsertPromise, timeoutPromise]) as any;
 
       if (upsertError) {
         console.error('Error creating profile with role:', upsertError);
@@ -48,11 +55,13 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
       //    Use the role we just set if the fetch fails (graceful degradation).
       let finalRole = role;
       try {
-        const { data: profileRow } = await supabase
+        const fetchPromise = supabase
           .from('profiles')
           .select('role')
           .eq('id', userId)
           .single();
+
+        const { data: profileRow } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
         if (profileRow?.role === 'artist' || profileRow?.role === 'fan') {
           finalRole = profileRow.role;
@@ -62,7 +71,12 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
         console.warn('Could not fetch profile after upsert, using selected role:', fetchError);
       }
 
-      setStoredRoleOnce(userId, finalRole);
+      try {
+        setStoredRoleOnce(userId, finalRole);
+      } catch (storageError) {
+        console.warn('Could not store role in localStorage:', storageError);
+        // Non-fatal, continue anyway
+      }
 
       setSaving(false);
       onRoleSet?.(finalRole);
@@ -74,7 +88,10 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
       // Catch any unexpected errors to prevent stuck "Saving..." state
       console.error('Unexpected error in chooseRole:', err);
       setSaving(false);
-      setError('An unexpected error occurred. Please try again.');
+      const errorMessage = err instanceof Error && err.message === 'Request timeout'
+        ? 'Request timed out. Please check your connection and try again.'
+        : 'An unexpected error occurred. Please try again.';
+      setError(errorMessage);
     }
   }
 
