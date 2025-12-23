@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Upsert profile with role (ignoreDuplicates = don't overwrite existing role)
+    // Try to upsert profile with role (ignoreDuplicates = don't overwrite existing role)
+    // Note: This may fail due to RLS policies for anonymous users - that's OK,
+    // the client will fall back to localStorage.
     const upsertUrl = new URL(`${supabaseUrl}/rest/v1/profiles`);
     
     const upsertRes = await fetch(upsertUrl.toString(), {
@@ -64,18 +66,21 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ id: userId, role }),
     });
 
-    // 409 Conflict means profile already exists (which is fine with ignoreDuplicates)
-    // 201 means created successfully
-    if (!upsertRes.ok && upsertRes.status !== 409) {
-      const errorText = await upsertRes.text().catch(() => 'Unknown error');
-      console.error('Profile upsert failed:', upsertRes.status, errorText);
+    // Check if upsert succeeded
+    const upsertOk = upsertRes.ok || upsertRes.status === 409; // 409 = already exists
+    
+    if (!upsertOk) {
+      // RLS or other DB restriction - return success with persisted=false
+      // Client will use localStorage (graceful degradation)
+      const errorText = await upsertRes.text().catch(() => '');
+      console.log('Profile upsert blocked (likely RLS):', upsertRes.status, errorText.slice(0, 100));
       return json(
-        { error: 'Failed to save profile' },
-        { status: 502, headers: { 'Cache-Control': 'no-store' } }
+        { data: { role, persisted: false } },
+        { status: 200, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 
-    // Fetch the profile to get the actual role (in case it already existed)
+    // Try to fetch the profile to get the actual role (in case it already existed)
     const fetchUrl = new URL(`${supabaseUrl}/rest/v1/profiles`);
     fetchUrl.searchParams.set('select', 'id,role');
     fetchUrl.searchParams.set('id', `eq.${userId}`);
@@ -89,21 +94,23 @@ export async function POST(request: NextRequest) {
 
     if (!fetchRes.ok) {
       // Non-fatal - return the role we tried to set
-      return json({ data: { role } }, { status: 200 });
+      return json({ data: { role, persisted: true } }, { status: 200 });
     }
 
     const profiles = (await fetchRes.json()) as { id: string; role: string }[];
     const savedRole = profiles[0]?.role || role;
 
     return json(
-      { data: { role: savedRole } },
+      { data: { role: savedRole, persisted: true } },
       { status: 200, headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (err) {
-    console.error('Error in profile API:', err);
+    // Network or other error - return success with persisted=false
+    // Client will use localStorage (graceful degradation)
+    console.log('Profile API error (graceful degradation):', err);
     return json(
-      { error: 'Failed to save profile' },
-      { status: 502, headers: { 'Cache-Control': 'no-store' } }
+      { data: { role, persisted: false } },
+      { status: 200, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 }

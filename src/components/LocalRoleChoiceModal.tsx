@@ -50,14 +50,22 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
           if (body.data?.role === 'artist' || body.data?.role === 'fan') {
             finalRole = body.data.role;
           }
+          // Log if not persisted to DB (expected for anonymous users due to RLS)
+          if (body.data?.persisted === false) {
+            console.log('Profile stored locally (DB persistence not available for anonymous users)');
+          }
         } else {
-          // API failed but we'll continue with localStorage
+          // Unexpected API error - continue with localStorage
           console.warn('Profile API returned error, using localStorage only');
         }
       } catch (fetchErr) {
         clearTimeout(timeoutId);
         // Network error or timeout - continue with localStorage
-        console.warn('Profile API failed, using localStorage only:', fetchErr);
+        if ((fetchErr as Error).name === 'AbortError') {
+          console.log('Profile API timed out, using localStorage only');
+        } else {
+          console.warn('Profile API failed, using localStorage only:', fetchErr);
+        }
       }
 
       // Always store locally (this is the source of truth for anonymous users)
