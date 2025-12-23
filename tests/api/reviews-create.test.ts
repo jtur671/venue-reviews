@@ -304,7 +304,9 @@ describe('POST /api/reviews', () => {
     await POST(request);
 
     // Check that the fetch was called with trimmed values
-    const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    // Note: first call is for profile, second is for review
+    const reviewCall = mockFetch.mock.calls.find(call => call[0].includes('/reviews'));
+    const fetchBody = JSON.parse(reviewCall[1].body);
     expect(fetchBody.reviewer_name).toBe('Trimmed Name');
     expect(fetchBody.comment).toBe('Trimmed comment');
   });

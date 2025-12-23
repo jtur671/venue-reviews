@@ -7,6 +7,12 @@ function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, init);
 }
 
+// Use service role key if available (bypasses RLS for profile creation)
+// Falls back to anon key if not set
+function getSupabaseKey(): string {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+}
+
 type CreateReviewBody = {
   venue_id: string;
   user_id: string;
@@ -93,6 +99,31 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // First, ensure profile exists (required by DB trigger)
+    // Use service role key if available to bypass RLS
+    const serviceKey = getSupabaseKey();
+    const profileUrl = new URL(`${supabaseUrl}/rest/v1/profiles`);
+    
+    const profileRes = await fetch(profileUrl.toString(), {
+      method: 'POST',
+      headers: {
+        apikey: supabaseAnonKey!,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=ignore-duplicates', // Don't fail if already exists
+      },
+      body: JSON.stringify({ 
+        id: body.user_id, 
+        role: body.reviewer_role || 'fan' // Default to fan if not specified
+      }),
+    });
+
+    // Log profile creation result but don't fail - the review insert will tell us if it worked
+    if (!profileRes.ok && profileRes.status !== 409) {
+      const profileError = await profileRes.text().catch(() => '');
+      console.log('Profile upsert response:', profileRes.status, profileError.slice(0, 100));
+    }
+
     const insertUrl = new URL(`${supabaseUrl}/rest/v1/reviews`);
 
     const insertData = {
@@ -137,8 +168,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Check for RLS policy violation or missing profile
+      const isRlsOrProfile = errorText.includes('P0001') || 
+                             errorText.includes('profile') || 
+                             errorText.includes('violates row-level security');
+      
+      // If missing profile and no service key, give admin guidance
+      const needsServiceKey = isRlsOrProfile && !process.env.SUPABASE_SERVICE_ROLE_KEY;
+      
       return json(
-        { error: 'Failed to create review' },
+        { 
+          error: isRlsOrProfile 
+            ? needsServiceKey
+              ? 'Server configuration required. Admin: add SUPABASE_SERVICE_ROLE_KEY to enable anonymous reviews.'
+              : 'Profile required to create review. Please refresh and try again.'
+            : 'Failed to create review',
+          details: process.env.NODE_ENV === 'development' ? errorText : undefined,
+        },
         { status: 502, headers: { 'Cache-Control': 'no-store' } }
       );
     }
