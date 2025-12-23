@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { getStoredRole, setStoredRoleOnce, type StoredRole } from '@/lib/roleStorage';
-import { supabase } from '@/lib/supabaseClient';
 
 type Props = {
   userId: string;
@@ -29,53 +28,43 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
     setSaving(true);
     setError(null);
 
+    let finalRole = role;
+
     try {
-      // Add timeout wrapper to prevent hanging requests
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), 30000)
-      );
+      // Use API route to save profile (avoids Supabase client auth issues in production)
+      // Short timeout - if it fails, we gracefully degrade to localStorage only
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      // 1) Create profile row with role (required by DB before reviews can be inserted).
-      //    Immutable: do not overwrite if it already exists.
-      const upsertPromise = supabase
-        .from('profiles')
-        .upsert({ id: userId, role }, { onConflict: 'id', ignoreDuplicates: true });
-
-      const { error: upsertError } = await Promise.race([upsertPromise, timeoutPromise]) as any;
-
-      if (upsertError) {
-        console.error('Error creating profile with role:', upsertError);
-        setSaving(false);
-        setError('Could not save your role. Please try again.');
-        return;
-      }
-
-      // 2) Store local role for fast UI (immutable unless storage cleared).
-      //    Even if profile existed already, store the true role from DB to keep UI consistent.
-      //    Use the role we just set if the fetch fails (graceful degradation).
-      let finalRole = role;
       try {
-        const fetchPromise = supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
+        const res = await fetch('/api/profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, role }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
 
-        const { data: profileRow } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-
-        if (profileRow?.role === 'artist' || profileRow?.role === 'fan') {
-          finalRole = profileRow.role;
+        if (res.ok) {
+          const body = await res.json();
+          if (body.data?.role === 'artist' || body.data?.role === 'fan') {
+            finalRole = body.data.role;
+          }
+        } else {
+          // API failed but we'll continue with localStorage
+          console.warn('Profile API returned error, using localStorage only');
         }
-      } catch (fetchError) {
-        // Non-fatal: use the role we just set
-        console.warn('Could not fetch profile after upsert, using selected role:', fetchError);
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        // Network error or timeout - continue with localStorage
+        console.warn('Profile API failed, using localStorage only:', fetchErr);
       }
 
+      // Always store locally (this is the source of truth for anonymous users)
       try {
         setStoredRoleOnce(userId, finalRole);
       } catch (storageError) {
         console.warn('Could not store role in localStorage:', storageError);
-        // Non-fatal, continue anyway
       }
 
       setSaving(false);
@@ -87,11 +76,16 @@ export function LocalRoleChoiceModal({ userId, onRoleSet }: Props) {
     } catch (err) {
       // Catch any unexpected errors to prevent stuck "Saving..." state
       console.error('Unexpected error in chooseRole:', err);
+      
+      // Last resort: just save locally and close
+      try {
+        setStoredRoleOnce(userId, role);
+        onRoleSet?.(role);
+        setOpen(false);
+      } catch {
+        setError('Could not save your role. Please try again.');
+      }
       setSaving(false);
-      const errorMessage = err instanceof Error && err.message === 'Request timeout'
-        ? 'Request timed out. Please check your connection and try again.'
-        : 'An unexpected error occurred. Please try again.';
-      setError(errorMessage);
     }
   }
 
