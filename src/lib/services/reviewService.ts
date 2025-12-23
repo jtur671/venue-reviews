@@ -43,7 +43,7 @@ export async function getReviewsByVenueId(venueId: string): Promise<{
   try {
     // Browser → API route (no auth issues)
     if (__shouldUseApiRouteInternal()) {
-      const result = await fetchFromApi<Review[]>(`/api/reviews/${venueId}`, {
+      const result = await fetchFromApi<Review[]>(`/api/reviews/by-venue/${venueId}`, {
         errorMessage: 'Failed to load reviews',
       });
       return { data: result.data || [], error: result.error };

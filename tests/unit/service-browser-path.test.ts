@@ -125,7 +125,7 @@ describe('Service Browser Path (API Routes)', () => {
   });
 
   describe('getReviewsByVenueId - browser path', () => {
-    it('fetches from /api/reviews/[venueId] in browser', async () => {
+    it('fetches from /api/reviews/by-venue/[venueId] in browser', async () => {
       const mockReviews = [
         { id: 'r1', reviewer: 'User 1', score: 8, user_id: 'u1' },
         { id: 'r2', reviewer: 'User 2', score: 9, user_id: 'u2' },
@@ -138,7 +138,7 @@ describe('Service Browser Path (API Routes)', () => {
 
       const result = await getReviewsByVenueId('venue-123');
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/reviews/venue-123', { method: 'GET' });
+      expect(mockFetch).toHaveBeenCalledWith('/api/reviews/by-venue/venue-123', { method: 'GET' });
       expect(result.error).toBeNull();
       expect(result.data).toEqual(mockReviews);
     });

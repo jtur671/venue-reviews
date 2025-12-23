@@ -10,7 +10,7 @@ vi.mock('@/lib/supabaseClient', () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-describe('GET /api/reviews/[venueId]', () => {
+describe('GET /api/reviews/by-venue/[venueId]', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -51,7 +51,7 @@ describe('GET /api/reviews/[venueId]', () => {
       json: async () => mockReviews,
     });
 
-    const { GET } = await import('../../app/api/reviews/[venueId]/route');
+    const { GET } = await import('../../app/api/reviews/by-venue/[venueId]/route');
     
     const request = new NextRequest('http://localhost/api/reviews/venue-123');
     const response = await GET(request, { params: Promise.resolve({ venueId: 'venue-123' }) });
@@ -75,7 +75,7 @@ describe('GET /api/reviews/[venueId]', () => {
       json: async () => [],
     });
 
-    const { GET } = await import('../../app/api/reviews/[venueId]/route');
+    const { GET } = await import('../../app/api/reviews/by-venue/[venueId]/route');
     
     const request = new NextRequest('http://localhost/api/reviews/venue-123');
     const response = await GET(request, { params: Promise.resolve({ venueId: 'venue-123' }) });
@@ -89,7 +89,7 @@ describe('GET /api/reviews/[venueId]', () => {
     const { getSupabaseConfigError } = await import('@/lib/supabaseClient');
     (getSupabaseConfigError as any).mockReturnValue('Missing configuration');
 
-    const { GET } = await import('../../app/api/reviews/[venueId]/route');
+    const { GET } = await import('../../app/api/reviews/by-venue/[venueId]/route');
     
     const request = new NextRequest('http://localhost/api/reviews/venue-123');
     const response = await GET(request, { params: Promise.resolve({ venueId: 'venue-123' }) });
@@ -108,7 +108,7 @@ describe('GET /api/reviews/[venueId]', () => {
       status: 500,
     });
 
-    const { GET } = await import('../../app/api/reviews/[venueId]/route');
+    const { GET } = await import('../../app/api/reviews/by-venue/[venueId]/route');
     
     const request = new NextRequest('http://localhost/api/reviews/venue-123');
     const response = await GET(request, { params: Promise.resolve({ venueId: 'venue-123' }) });
@@ -127,7 +127,7 @@ describe('GET /api/reviews/[venueId]', () => {
       json: async () => [],
     });
 
-    const { GET } = await import('../../app/api/reviews/[venueId]/route');
+    const { GET } = await import('../../app/api/reviews/by-venue/[venueId]/route');
     
     const request = new NextRequest('http://localhost/api/reviews/venue-123');
     await GET(request, { params: Promise.resolve({ venueId: 'venue-123' }) });
