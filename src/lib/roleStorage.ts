@@ -43,11 +43,16 @@ export function clearStoredRole(userId: string | null | undefined): void {
 export function clearAllStoredRoles(): void {
   if (typeof window === 'undefined') return;
   try {
-    const keys = Object.keys(localStorage);
-    for (const key of keys) {
-      if (key.startsWith(KEY_PREFIX)) {
-        localStorage.removeItem(key);
+    // Use localStorage.key() for better compatibility with mocks
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(KEY_PREFIX)) {
+        keysToRemove.push(key);
       }
+    }
+    for (const key of keysToRemove) {
+      localStorage.removeItem(key);
     }
   } catch {
     // ignore
@@ -62,9 +67,10 @@ export function clearAllStoredRoles(): void {
 export function getAnyStoredRole(): StoredRole | null {
   if (typeof window === 'undefined') return null;
   try {
-    const keys = Object.keys(localStorage);
-    for (const key of keys) {
-      if (key.startsWith(KEY_PREFIX)) {
+    // Use localStorage.key() for better compatibility with mocks
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(KEY_PREFIX)) {
         const raw = localStorage.getItem(key);
         if (raw === 'artist' || raw === 'fan') {
           return raw;
