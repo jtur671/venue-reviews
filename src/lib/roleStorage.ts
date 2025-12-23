@@ -54,3 +54,26 @@ export function clearAllStoredRoles(): void {
   }
 }
 
+/**
+ * Get any stored role from localStorage (when we don't have a userId yet).
+ * This is useful during auth timeouts when we can't look up by userId.
+ * Returns the most recently stored role, or null if none found.
+ */
+export function getAnyStoredRole(): StoredRole | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (key.startsWith(KEY_PREFIX)) {
+        const raw = localStorage.getItem(key);
+        if (raw === 'artist' || raw === 'fan') {
+          return raw;
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+

@@ -14,7 +14,7 @@ import { useAnonUser } from '@/hooks/useAnonUser';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProfile } from '@/hooks/useProfile';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
-import { getStoredRole, type StoredRole } from '@/lib/roleStorage';
+import { getStoredRole, getAnyStoredRole, type StoredRole } from '@/lib/roleStorage';
 import { LocalRoleChoiceModal } from '@/components/LocalRoleChoiceModal';
 
 export default function VenuePage() {
@@ -27,15 +27,21 @@ export default function VenuePage() {
 
   const viewerUserId = currentUser?.id ?? anonUser?.id ?? null;
   const [localRole, setLocalRole] = useState<StoredRole | null>(null);
+  const [lastKnownUserId, setLastKnownUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!viewerUserId) {
-      setLocalRole(null);
-      return;
+    // Try to load role by userId, or fall back to any stored role during auth timeouts
+    if (viewerUserId && viewerUserId !== lastKnownUserId) {
+      setLastKnownUserId(viewerUserId);
+      // Read localStorage role after mount (avoid SSR hydration mismatches).
+      const role = getStoredRole(viewerUserId) ?? getAnyStoredRole();
+      setLocalRole(role);
+    } else if (!viewerUserId && !localRole) {
+      // Auth is timing out but maybe we have a stored role from before
+      const anyRole = getAnyStoredRole();
+      if (anyRole) setLocalRole(anyRole);
     }
-    // Read localStorage role after mount (avoid SSR hydration mismatches).
-    setLocalRole(getStoredRole(viewerUserId));
-  }, [viewerUserId]);
+  }, [viewerUserId, lastKnownUserId, localRole]);
 
   const reviewerRole = (isEmailUser ? profile?.role : localRole) ?? null;
 

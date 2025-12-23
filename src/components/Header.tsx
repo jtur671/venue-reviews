@@ -7,7 +7,7 @@ import { supabase, getSupabaseConfigError } from '@/lib/supabaseClient';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { userCache } from '@/lib/cache/userCache';
 import { LoginModal } from '@/components/LoginModal';
-import { getStoredRole } from '@/lib/roleStorage';
+import { getStoredRole, getAnyStoredRole } from '@/lib/roleStorage';
 import { useAnonUser } from '@/hooks/useAnonUser';
 import { DevClearProfileButton } from '@/components/dev/DevClearProfileButton';
 
@@ -397,7 +397,8 @@ export function Header() {
           ) : (
             <>
               {(() => {
-                const localRole = getStoredRole(anonUser?.id ?? null);
+                // Try to get role by userId, fall back to any stored role during auth timeouts
+                const localRole = getStoredRole(anonUser?.id ?? null) ?? getAnyStoredRole();
                 if (!localRole) return null;
                 return (
                   <span
