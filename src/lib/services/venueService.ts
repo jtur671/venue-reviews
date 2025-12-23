@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { mapSupabaseVenues } from '@/lib/mapSupabaseVenues';
 import { VenueWithStats } from '@/types/venues';
+import { __shouldUseApiRouteInternal, fetchFromApi } from './fetchHelpers';
 
 export type Venue = {
   id: string;
@@ -27,49 +28,41 @@ export type VenueServiceError = {
 };
 
 /**
- * Get all venues with their review statistics
+ * Get all venues with their review statistics.
+ * Uses API route in browser (avoids Supabase auth issues), direct Supabase in SSR/tests.
  */
 export async function getAllVenues(): Promise<{
   data: VenueWithStats[] | null;
   error: VenueServiceError | null;
 }> {
   try {
-    // In SSR/tests, use direct Supabase client (relative fetch URLs won't work, and unit tests mock Supabase).
-    if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
-      const { data, error } = await supabase
-        .from('venues')
-        .select('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Error loading venues:', error);
-        return {
-          data: null,
-          error: {
-            code: error.code,
-            message: 'Failed to load venues',
-          },
-        };
-      }
-
-      const withStats = mapSupabaseVenues(data || []);
-      return { data: withStats, error: null };
+    // Browser → API route (edge-cached, no auth issues)
+    if (__shouldUseApiRouteInternal()) {
+      const result = await fetchFromApi<VenueWithStats[]>('/api/venues', {
+        errorMessage: 'Failed to load venues',
+      });
+      return { data: result.data || [], error: result.error };
     }
 
-    // In the browser, use our server route so production can edge-cache and avoid slow/flaky browser->Supabase calls.
-    const res = await fetch('/api/venues', { method: 'GET' });
-    const body = (await res.json().catch(() => null)) as { data?: VenueWithStats[]; error?: string } | null;
+    // SSR/Tests → Direct Supabase
+    const { data, error } = await supabase
+      .from('venues')
+      .select('id, name, city, photo_url, google_place_id, reviews(score, created_at, reviewer_role)')
+      .order('name', { ascending: true });
 
-    if (!res.ok) {
+    if (error) {
+      console.error('Error loading venues:', error);
       return {
         data: null,
         error: {
-          message: body?.error || 'Failed to load venues',
+          code: error.code,
+          message: 'Failed to load venues',
         },
       };
     }
 
-    return { data: body?.data || [], error: null };
+    const withStats = mapSupabaseVenues(data || []);
+    return { data: withStats, error: null };
   } catch (err) {
     console.error('Unexpected error loading venues:', err);
     return {
@@ -82,49 +75,40 @@ export async function getAllVenues(): Promise<{
 }
 
 /**
- * Get a single venue by ID
+ * Get a single venue by ID.
+ * Uses API route in browser (avoids Supabase auth issues), direct Supabase in SSR/tests.
  */
 export async function getVenueById(id: string): Promise<{
   data: Venue | null;
   error: VenueServiceError | null;
 }> {
   try {
-    // In SSR/tests, use direct Supabase client (relative fetch URLs won't work, and unit tests mock Supabase).
-    if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
-      const { data, error } = await supabase
-        .from('venues')
-        .select('id, name, city, country, address, photo_url, google_place_id')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        console.error('Error loading venue:', error);
-        return {
-          data: null,
-          error: {
-            code: error.code,
-            message: error.code === 'PGRST116' ? 'Venue not found' : 'Failed to load venue',
-          },
-        };
-      }
-
-      return { data: data as Venue, error: null };
+    // Browser → API route (no auth issues)
+    if (__shouldUseApiRouteInternal()) {
+      return fetchFromApi<Venue>(`/api/venues/${id}`, {
+        errorMessage: 'Failed to load venue',
+      });
     }
 
-    // In the browser, use our server route to avoid slow/flaky browser->Supabase auth issues.
-    const res = await fetch(`/api/venues/${id}`, { method: 'GET' });
-    const body = (await res.json().catch(() => null)) as { data?: Venue; error?: string } | null;
+    // SSR/Tests → Direct Supabase
+    const { data, error } = await supabase
+      .from('venues')
+      .select('id, name, city, country, address, photo_url, google_place_id')
+      .eq('id', id)
+      .single();
 
-    if (!res.ok) {
+    if (error) {
+      console.error('Error loading venue:', error);
       return {
         data: null,
         error: {
-          message: body?.error || 'Failed to load venue',
+          code: error.code,
+          message: error.code === 'PGRST116' ? 'Venue not found' : 'Failed to load venue',
         },
       };
     }
 
-    return { data: body?.data || null, error: null };
+    return { data: data as Venue, error: null };
   } catch (err) {
     console.error('Unexpected error loading venue:', err);
     return {
