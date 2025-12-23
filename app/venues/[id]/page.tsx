@@ -14,7 +14,7 @@ import { useAnonUser } from '@/hooks/useAnonUser';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProfile } from '@/hooks/useProfile';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
-import { getStoredRole, getAnyStoredRole, type StoredRole } from '@/lib/roleStorage';
+import { getStoredRole, getAnyStoredRole, FALLBACK_USER_ID, type StoredRole } from '@/lib/roleStorage';
 import { LocalRoleChoiceModal } from '@/components/LocalRoleChoiceModal';
 
 export default function VenuePage() {
@@ -25,23 +25,26 @@ export default function VenuePage() {
   const isEmailUser = !!currentUser?.email;
   const { profile, loading: profileLoading } = useProfile(isEmailUser ? currentUser : null);
 
-  const viewerUserId = currentUser?.id ?? anonUser?.id ?? null;
+  // Use real userId if available, otherwise use fallback after auth finishes loading
+  const authLoading = anonLoading || currentUserLoading;
+  const realUserId = currentUser?.id ?? anonUser?.id ?? null;
+  const viewerUserId = realUserId ?? (!authLoading ? FALLBACK_USER_ID : null);
+  
   const [localRole, setLocalRole] = useState<StoredRole | null>(null);
-  const [lastKnownUserId, setLastKnownUserId] = useState<string | null>(null);
+  const [roleChecked, setRoleChecked] = useState(false);
 
   useEffect(() => {
-    // Try to load role by userId, or fall back to any stored role during auth timeouts
-    if (viewerUserId && viewerUserId !== lastKnownUserId) {
-      setLastKnownUserId(viewerUserId);
-      // Read localStorage role after mount (avoid SSR hydration mismatches).
-      const role = getStoredRole(viewerUserId) ?? getAnyStoredRole();
-      setLocalRole(role);
-    } else if (!viewerUserId && !localRole) {
-      // Auth is timing out but maybe we have a stored role from before
-      const anyRole = getAnyStoredRole();
-      if (anyRole) setLocalRole(anyRole);
-    }
-  }, [viewerUserId, lastKnownUserId, localRole]);
+    // Check for existing role after mount (avoid SSR hydration issues)
+    if (typeof window === 'undefined') return;
+    
+    // Try to load role: first by real userId, then fallback, then any stored role
+    const role = (realUserId ? getStoredRole(realUserId) : null) 
+      ?? getStoredRole(FALLBACK_USER_ID) 
+      ?? getAnyStoredRole();
+    
+    setLocalRole(role);
+    setRoleChecked(true);
+  }, [realUserId]);
 
   const reviewerRole = (isEmailUser ? profile?.role : localRole) ?? null;
 
@@ -66,8 +69,8 @@ export default function VenuePage() {
 
   return (
     <div className="page-container">
-      {/* Fallback: ensure role prompt appears on venue pages too */}
-      {viewerUserId && !reviewerRole && (
+      {/* Role prompt - shows once per browser until a role is selected */}
+      {viewerUserId && roleChecked && !reviewerRole && (
         <LocalRoleChoiceModal
           userId={viewerUserId}
           onRoleSet={(r) => setLocalRole(r)}

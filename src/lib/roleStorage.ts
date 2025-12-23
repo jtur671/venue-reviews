@@ -2,6 +2,9 @@ export type StoredRole = 'artist' | 'fan';
 
 const KEY_PREFIX = 'venue_reviews_role_';
 
+// Fallback ID for when Supabase auth times out
+export const FALLBACK_USER_ID = 'local-anonymous-user';
+
 export function getStoredRole(userId: string | null | undefined): StoredRole | null {
   if (!userId) return null;
   if (typeof window === 'undefined') return null;
