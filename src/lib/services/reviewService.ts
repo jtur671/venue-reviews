@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { Review } from '@/types/venues';
-import { __shouldUseApiRouteInternal, fetchFromApi } from './fetchHelpers';
+import { __shouldUseApiRouteInternal, fetchFromApi, deleteFromApi } from './fetchHelpers';
 
 export type CreateReviewInput = {
   venue_id: string;
@@ -83,6 +83,7 @@ export async function getReviewsByVenueId(venueId: string): Promise<{
 
 /**
  * Create a new review
+ * Uses API route in browser (avoids Supabase auth issues), direct Supabase in SSR/tests.
  * 
  * IMPORTANT: For logged-in users, reviewer_role MUST be set from profiles.role.
  * The caller (ReviewForm) is responsible for fetching the current profile and passing reviewer_role.
@@ -97,6 +98,40 @@ export async function createReview(input: CreateReviewInput): Promise<{
   const reviewerRole = input.reviewer_role ?? null;
 
   try {
+    // Browser → API route (no auth issues)
+    if (__shouldUseApiRouteInternal()) {
+      const result = await fetchFromApi<Review>('/api/reviews', {
+        method: 'POST',
+        body: {
+          venue_id: input.venue_id,
+          user_id: input.user_id,
+          reviewer_name: input.reviewer_name?.trim() || null,
+          comment: input.comment?.trim() || null,
+          score: input.score,
+          sound_score: input.sound_score,
+          vibe_score: input.vibe_score,
+          staff_score: input.staff_score,
+          layout_score: input.layout_score,
+          reviewer_role: reviewerRole,
+        },
+        errorMessage: 'Failed to create review',
+      });
+
+      if (result.error) {
+        return {
+          data: null,
+          error: {
+            code: result.error.code,
+            message: result.error.message,
+            isDuplicate: result.error.isDuplicate,
+          },
+        };
+      }
+
+      return { data: result.data, error: null };
+    }
+
+    // SSR/Tests → Direct Supabase
     const { data, error } = await supabase
       .from('reviews')
       .insert({
@@ -145,6 +180,7 @@ export async function createReview(input: CreateReviewInput): Promise<{
 
 /**
  * Update an existing review
+ * Uses API route in browser (avoids Supabase auth issues), direct Supabase in SSR/tests.
  * 
  * IMPORTANT: reviewer_role should be updated from profiles.role for logged-in users.
  * This ensures that if a user changes their role, updating their review will reflect the new role.
@@ -162,6 +198,38 @@ export async function updateReview(
   const reviewerRole = input.reviewer_role ?? null;
 
   try {
+    // Browser → API route (no auth issues)
+    if (__shouldUseApiRouteInternal()) {
+      const result = await fetchFromApi<Review>(`/api/reviews/${id}`, {
+        method: 'PUT',
+        body: {
+          user_id: userId,
+          reviewer_name: input.reviewer_name?.trim() || null,
+          comment: input.comment?.trim() || null,
+          score: input.score,
+          sound_score: input.sound_score,
+          vibe_score: input.vibe_score,
+          staff_score: input.staff_score,
+          layout_score: input.layout_score,
+          reviewer_role: reviewerRole,
+        },
+        errorMessage: 'Failed to update review',
+      });
+
+      if (result.error) {
+        return {
+          data: null,
+          error: {
+            code: result.error.code,
+            message: result.error.message,
+          },
+        };
+      }
+
+      return { data: result.data, error: null };
+    }
+
+    // SSR/Tests → Direct Supabase
     const { data, error } = await supabase
       .from('reviews')
       .update({
@@ -206,6 +274,7 @@ export async function updateReview(
 
 /**
  * Delete a review
+ * Uses API route in browser (avoids Supabase auth issues), direct Supabase in SSR/tests.
  */
 export async function deleteReview(
   id: string,
@@ -214,6 +283,16 @@ export async function deleteReview(
   error: ReviewServiceError | null;
 }> {
   try {
+    // Browser → API route (no auth issues)
+    if (__shouldUseApiRouteInternal()) {
+      const result = await deleteFromApi(`/api/reviews/${id}?user_id=${encodeURIComponent(userId)}`, {
+        errorMessage: 'Failed to delete review',
+      });
+
+      return { error: result.error };
+    }
+
+    // SSR/Tests → Direct Supabase
     const { error } = await supabase
       .from('reviews')
       .delete()
