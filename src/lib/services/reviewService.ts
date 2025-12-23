@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { Review } from '@/types/venues';
+import { __shouldUseApiRouteInternal, fetchFromApi } from './fetchHelpers';
 
 export type CreateReviewInput = {
   venue_id: string;
@@ -32,51 +33,43 @@ export type ReviewServiceError = {
 };
 
 /**
- * Get all reviews for a venue
+ * Get all reviews for a venue.
+ * Uses API route in browser (avoids Supabase auth issues), direct Supabase in SSR/tests.
  */
 export async function getReviewsByVenueId(venueId: string): Promise<{
   data: Review[] | null;
   error: ReviewServiceError | null;
 }> {
   try {
-    // In SSR/tests, use direct Supabase client (relative fetch URLs won't work, and unit tests mock Supabase).
-    if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
-      const { data, error } = await supabase
-        .from('reviews')
-        .select(
-          'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role'
-        )
-        .eq('venue_id', venueId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading reviews:', error);
-        return {
-          data: null,
-          error: {
-            code: error.code,
-            message: 'Failed to load reviews',
-          },
-        };
-      }
-
-      return { data: (data || []) as Review[], error: null };
+    // Browser → API route (no auth issues)
+    if (__shouldUseApiRouteInternal()) {
+      const result = await fetchFromApi<Review[]>(`/api/reviews/${venueId}`, {
+        errorMessage: 'Failed to load reviews',
+      });
+      return { data: result.data || [], error: result.error };
     }
 
-    // In the browser, use our server route to avoid slow/flaky browser->Supabase auth issues.
-    const res = await fetch(`/api/reviews/${venueId}`, { method: 'GET' });
-    const body = (await res.json().catch(() => null)) as { data?: Review[]; error?: string } | null;
+    // SSR/Tests → Direct Supabase
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(
+        'id, reviewer: reviewer_name, score, comment, created_at, sound_score, vibe_score, staff_score, layout_score, user_id, reviewer_role'
+      )
+      .eq('venue_id', venueId)
+      .order('created_at', { ascending: false });
 
-    if (!res.ok) {
+    if (error) {
+      console.error('Error loading reviews:', error);
       return {
         data: null,
         error: {
-          message: body?.error || 'Failed to load reviews',
+          code: error.code,
+          message: 'Failed to load reviews',
         },
       };
     }
 
-    return { data: body?.data || [], error: null };
+    return { data: (data || []) as Review[], error: null };
   } catch (err) {
     console.error('Unexpected error loading reviews:', err);
     return {
