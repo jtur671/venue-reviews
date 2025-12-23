@@ -10,6 +10,38 @@ type ReviewListProps = {
   reviews: Review[];
 };
 
+/** Small badge showing reviewer type (Artist/Fan) */
+function RoleBadge({ role }: { role: 'artist' | 'fan' | null | undefined }) {
+  if (!role) return null;
+  
+  const isArtist = role === 'artist';
+  
+  return (
+    <span
+      className="review-role-badge"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        padding: '0.15rem 0.5rem',
+        borderRadius: '999px',
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        background: isArtist
+          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        color: '#ffffff',
+        marginLeft: '0.5rem',
+        whiteSpace: 'nowrap',
+      }}
+      title={isArtist ? 'Review from an artist/band' : 'Review from a fan/attendee'}
+    >
+      <span aria-hidden="true">{isArtist ? '🎤' : '🎟️'}</span>
+      <span>{isArtist ? 'Artist' : 'Fan'}</span>
+    </span>
+  );
+}
+
 const ReviewBody = memo(function ReviewBody({ review }: { review: Review }) {
   const reviewerName = review.reviewer ?? review.reviewer_name ?? null;
   const displayName = reviewerName || 'Anonymous';
@@ -22,7 +54,10 @@ const ReviewBody = memo(function ReviewBody({ review }: { review: Review }) {
   return (
     <>
       <div className="review-header">
-        <span className="review-author">{displayName}</span>
+        <span className="review-author">
+          {displayName}
+          <RoleBadge role={review.reviewer_role} />
+        </span>
         <span className="review-score">
           {formatScore(review.score)}/10
         </span>

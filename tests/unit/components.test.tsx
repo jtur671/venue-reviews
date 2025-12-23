@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DeleteAccountModal } from '@/components/DeleteAccountModal';
+import { ReviewList } from '@/components/ReviewList';
+import { Review } from '@/types/venues';
 
 describe('Modal Components', () => {
   describe('DeleteAccountModal', () => {
@@ -237,6 +239,130 @@ describe('Modal Components', () => {
 
       const newInput = screen.getByPlaceholderText('Type delete to confirm') as HTMLInputElement;
       expect(newInput.value).toBe('');
+    });
+  });
+});
+
+describe('ReviewList', () => {
+  const createMockReview = (overrides: Partial<Review> = {}): Review => ({
+    id: 'review-1',
+    reviewer: 'Test User',
+    score: 8,
+    comment: 'Great venue!',
+    created_at: '2024-01-15T12:00:00Z',
+    sound_score: 8,
+    vibe_score: 9,
+    staff_score: 7,
+    layout_score: 8,
+    user_id: 'user-1',
+    reviewer_role: null,
+    ...overrides,
+  });
+
+  describe('RoleBadge display', () => {
+    it('displays Artist badge when reviewer_role is artist', () => {
+      const review = createMockReview({ reviewer_role: 'artist' });
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.getByText('Artist')).toBeInTheDocument();
+      expect(screen.getByText('🎤')).toBeInTheDocument();
+    });
+
+    it('displays Fan badge when reviewer_role is fan', () => {
+      const review = createMockReview({ reviewer_role: 'fan' });
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.getByText('Fan')).toBeInTheDocument();
+      expect(screen.getByText('🎟️')).toBeInTheDocument();
+    });
+
+    it('does not display badge when reviewer_role is null', () => {
+      const review = createMockReview({ reviewer_role: null });
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.queryByText('Artist')).not.toBeInTheDocument();
+      expect(screen.queryByText('Fan')).not.toBeInTheDocument();
+    });
+
+    it('does not display badge when reviewer_role is undefined', () => {
+      const review = createMockReview();
+      delete (review as any).reviewer_role;
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.queryByText('Artist')).not.toBeInTheDocument();
+      expect(screen.queryByText('Fan')).not.toBeInTheDocument();
+    });
+
+    it('displays badge for myReview as well', () => {
+      const myReview = createMockReview({ reviewer_role: 'artist', reviewer: 'Me' });
+      
+      render(<ReviewList myReview={myReview} reviews={[]} />);
+      
+      expect(screen.getByText('Artist')).toBeInTheDocument();
+    });
+
+    it('displays correct badge for each review in a list', () => {
+      const reviews = [
+        createMockReview({ id: '1', reviewer: 'Artist User', reviewer_role: 'artist' }),
+        createMockReview({ id: '2', reviewer: 'Fan User', reviewer_role: 'fan' }),
+        createMockReview({ id: '3', reviewer: 'No Role User', reviewer_role: null }),
+      ];
+      
+      render(<ReviewList myReview={null} reviews={reviews} />);
+      
+      // Should have one Artist and one Fan badge
+      expect(screen.getAllByText('Artist')).toHaveLength(1);
+      expect(screen.getAllByText('Fan')).toHaveLength(1);
+    });
+  });
+
+  describe('basic rendering', () => {
+    it('renders reviewer name', () => {
+      const review = createMockReview({ reviewer: 'Jason' });
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.getByText('Jason')).toBeInTheDocument();
+    });
+
+    it('renders Anonymous when reviewer is null', () => {
+      const review = createMockReview({ reviewer: null });
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.getByText('Anonymous')).toBeInTheDocument();
+    });
+
+    it('renders score', () => {
+      const review = createMockReview({ score: 8.5 });
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.getByText('8.5/10')).toBeInTheDocument();
+    });
+
+    it('renders aspect scores', () => {
+      const review = createMockReview({
+        sound_score: 8,
+        vibe_score: 9,
+        staff_score: 7,
+        layout_score: 8,
+      });
+      
+      render(<ReviewList myReview={null} reviews={[review]} />);
+      
+      expect(screen.getByText(/Sound 8/)).toBeInTheDocument();
+      expect(screen.getByText(/Vibe 9/)).toBeInTheDocument();
+    });
+
+    it('renders empty state when no reviews', () => {
+      render(<ReviewList myReview={null} reviews={[]} />);
+      
+      expect(screen.getByText(/No report cards yet/)).toBeInTheDocument();
     });
   });
 });
