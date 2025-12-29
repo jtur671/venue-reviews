@@ -73,6 +73,18 @@ class VenuesCache {
       });
     }
   }
+
+  clear() {
+    this.venuesCache = null;
+    this.pendingFetch = null;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+  }
 }
 
 export const venuesCache = new VenuesCache();

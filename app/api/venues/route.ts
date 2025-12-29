@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { mapSupabaseVenues } from '@/lib/mapSupabaseVenues';
 import { getSupabaseConfigError } from '@/lib/supabaseClient';
 
@@ -8,7 +8,7 @@ function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, init);
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -32,6 +32,10 @@ export async function GET() {
   );
   url.searchParams.set('order', 'name.asc');
 
+  // Check if client wants to bypass cache
+  const cacheControl = request.headers.get('cache-control');
+  const bypassCache = cacheControl === 'no-cache';
+
   try {
     const res = await fetch(url.toString(), {
       headers: {
@@ -39,7 +43,8 @@ export async function GET() {
         Authorization: `Bearer ${supabaseAnonKey!}`,
       },
       // Let Next/Vercel cache at the edge and revalidate periodically.
-      next: { revalidate: 60 },
+      // But bypass cache if client requests it (e.g., after creating a venue)
+      next: bypassCache ? { revalidate: 0 } : { revalidate: 60 },
     });
 
     if (!res.ok) {

@@ -14,6 +14,7 @@ import { useVenueStats } from '@/hooks/useVenueStats';
 import { useRemoteSearch } from '@/hooks/useRemoteSearch';
 import { createVenue } from '@/lib/services/venueService';
 import { scoreToGrade } from '@/lib/utils/grades';
+import { venuesCache } from '@/lib/cache/venuesCache';
 
 type SortBy = 'top-rated' | 'most-reviewed' | 'name';
 
@@ -206,6 +207,14 @@ export default function HomePage() {
       if (data?.id) {
         console.log('Venue created successfully, navigating to:', data.id);
         
+        // Invalidate venues cache so the new venue appears when user navigates back
+        // This ensures the venue list is fresh after creation
+        venuesCache.clear();
+        // Force refresh to bypass Next.js edge cache
+        setTimeout(() => {
+          loadVenues(true);
+        }, 300);
+        
         // Handle photo caching/backfill:
         // 1. If we have a Google photo URL, cache it to Supabase Storage
         // 2. If we have google_place_id but no photo URL, trigger backfill to fetch it
@@ -237,7 +246,7 @@ export default function HomePage() {
           });
         }
         
-        // Small delay to ensure database is ready, then navigate
+        // Small delay to ensure database is ready and cache is refreshed, then navigate
         setTimeout(() => {
           try {
             router.push(`/venues/${data.id}`);
@@ -245,7 +254,7 @@ export default function HomePage() {
             console.error('Navigation failed:', navErr);
             setCreatingVenue(false);
           }
-        }, 100);
+        }, 500); // Increased delay to allow cache refresh
         return;
       }
       

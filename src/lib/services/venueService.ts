@@ -30,8 +30,9 @@ export type VenueServiceError = {
 /**
  * Get all venues with their review statistics.
  * Uses API route in browser (avoids Supabase auth issues), direct Supabase in SSR/tests.
+ * @param forceRefresh - If true, bypasses cache by adding cache-control header
  */
-export async function getAllVenues(): Promise<{
+export async function getAllVenues(forceRefresh = false): Promise<{
   data: VenueWithStats[] | null;
   error: VenueServiceError | null;
 }> {
@@ -40,6 +41,7 @@ export async function getAllVenues(): Promise<{
     if (__shouldUseApiRouteInternal()) {
       const result = await fetchFromApi<VenueWithStats[]>('/api/venues', {
         errorMessage: 'Failed to load venues',
+        headers: forceRefresh ? { 'cache-control': 'no-cache' } : {},
       });
       return { data: result.data || [], error: result.error };
     }

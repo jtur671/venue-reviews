@@ -11,20 +11,22 @@ export function useVenues() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadVenues = useCallback(async () => {
+  const loadVenues = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
 
     try {
-      // If there's already a pending fetch, await it instead of starting another.
-      const pending = venuesCache.getPendingFetch();
-      if (pending) {
-        const cached = await pending;
-        if (cached) {
-          setVenues(cached);
+      // If there's already a pending fetch and we're not forcing refresh, await it instead of starting another.
+      if (!forceRefresh) {
+        const pending = venuesCache.getPendingFetch();
+        if (pending) {
+          const cached = await pending;
+          if (cached) {
+            setVenues(cached);
+          }
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
       }
 
       // Don't hard-fail on slow networks; just warn if it takes unusually long.
@@ -34,7 +36,7 @@ export function useVenues() {
       }, warnAfterMs);
 
       const fetchPromise = (async () => {
-        const { data, error: fetchError } = await getAllVenues();
+        const { data, error: fetchError } = await getAllVenues(forceRefresh);
         if (fetchError) return null;
         return data || [];
       })();
