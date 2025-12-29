@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
 import { BackButton } from '@/components/BackButton';
