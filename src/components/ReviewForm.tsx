@@ -163,10 +163,11 @@ export function ReviewForm({
     reviewsCache.invalidate(venueId);
     
     console.log('Review submitted successfully, calling onSubmitted callback');
-    // Add a small delay to ensure database transaction is committed
+    // Add a delay to ensure database transaction is committed before refetching
+    // Increased delay to ensure DB is ready, especially in production
     setTimeout(() => {
       onSubmitted();
-    }, 100);
+    }, 300); // Increased from 100ms to 300ms for production latency
   }
 
   async function handleDelete() {
@@ -198,8 +199,10 @@ export function ReviewForm({
     onSubmitted();
   }
 
+  // Allow form to be enabled even if role isn't set yet - user can select it via modal
+  // Only disable if actively submitting/deleting or if there's no user ID at all
   const isDisabled =
-    submitting || deleting || !currentUserId || profileLoading || !reviewerRole;
+    submitting || deleting || !currentUserId || (profileLoading && reviewerRole === null);
 
   return (
     <form onSubmit={handleSubmit} className="section card">

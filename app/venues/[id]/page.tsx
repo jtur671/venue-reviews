@@ -26,9 +26,13 @@ export default function VenuePage() {
   const { profile, loading: profileLoading } = useProfile(isEmailUser ? currentUser : null);
 
   // Use real userId if available, otherwise use fallback after auth finishes loading
+  // For anonymous users, we use FALLBACK_USER_ID immediately to avoid blocking the form
+  // This ensures the review form is enabled even when anonymous auth is slow
   const authLoading = anonLoading || currentUserLoading;
   const realUserId = currentUser?.id ?? anonUser?.id ?? null;
-  const viewerUserId = realUserId ?? (!authLoading ? FALLBACK_USER_ID : null);
+  // Use fallback immediately if no real user (don't wait for auth to finish)
+  // This allows the form to work even when anonymous auth is timing out
+  const viewerUserId = realUserId ?? FALLBACK_USER_ID;
   
   const [localRole, setLocalRole] = useState<StoredRole | null>(null);
   const [roleChecked, setRoleChecked] = useState(false);
@@ -167,10 +171,15 @@ export default function VenuePage() {
             profileLoading={
               isEmailUser
                 ? profileLoading || currentUserLoading
-                : anonLoading || currentUserLoading
+                : false // Don't block form for anonymous users - they can use fallback ID
             }
             existingReview={myReview ?? null}
-            onSubmitted={refetchReviews}
+            onSubmitted={() => {
+              // Force refetch with a small delay to ensure DB is ready
+              setTimeout(() => {
+                refetchReviews();
+              }, 300);
+            }}
           />
 
           <ReviewList myReview={myReview} reviews={otherReviews} />
