@@ -159,6 +159,55 @@ export async function POST(request: NextRequest) {
       const isDuplicate = errorText.includes('23505') || errorText.includes('duplicate');
       
       if (isDuplicate) {
+        // Try to fetch the existing review so the client can display it
+        try {
+          const fetchUrl = new URL(`${supabaseUrl}/rest/v1/reviews`);
+          fetchUrl.searchParams.set('select', 'id,reviewer_name,score,comment,created_at,sound_score,vibe_score,staff_score,layout_score,user_id,reviewer_role');
+          fetchUrl.searchParams.set('venue_id', `eq.${body.venue_id}`);
+          fetchUrl.searchParams.set('user_id', `eq.${body.user_id}`);
+          fetchUrl.searchParams.set('limit', '1');
+          
+          const existingRes = await fetch(fetchUrl.toString(), {
+            headers: {
+              apikey: supabaseAnonKey!,
+              Authorization: `Bearer ${supabaseAnonKey!}`,
+            },
+          });
+          
+          if (existingRes.ok) {
+            const existingData = (await existingRes.json()) as unknown[];
+            if (existingData && existingData.length > 0) {
+              const existingReview = existingData[0] as Record<string, unknown>;
+              const mapped = {
+                id: existingReview.id,
+                reviewer: existingReview.reviewer_name,
+                score: existingReview.score,
+                comment: existingReview.comment,
+                created_at: existingReview.created_at,
+                sound_score: existingReview.sound_score,
+                vibe_score: existingReview.vibe_score,
+                staff_score: existingReview.staff_score,
+                layout_score: existingReview.layout_score,
+                user_id: existingReview.user_id,
+                reviewer_role: existingReview.reviewer_role,
+              };
+              
+              console.log('Duplicate review found - returning existing review:', mapped.id, 'user_id:', mapped.user_id);
+              return json(
+                { 
+                  error: "You've already left a report card for this venue from this browser.",
+                  code: '23505',
+                  isDuplicate: true,
+                  data: mapped, // Include the existing review
+                },
+                { status: 409, headers: { 'Cache-Control': 'no-store' } }
+              );
+            }
+          }
+        } catch (fetchErr) {
+          console.error('Error fetching existing review on duplicate:', fetchErr);
+        }
+        
         return json(
           { 
             error: "You've already left a report card for this venue from this browser.",

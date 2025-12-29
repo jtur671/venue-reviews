@@ -41,7 +41,17 @@ export function logError(error: unknown, context: string): void {
  */
 export function formatError(error: unknown, defaultMessage: string): string {
   const message = createErrorMessage(error, defaultMessage);
-  logError(error, 'formatError');
+  
+  // Only log actual errors (Error objects or error-like objects), not user-friendly string messages
+  // User-friendly messages are already formatted and don't need logging
+  if (error instanceof Error) {
+    logError(error, 'formatError');
+  } else if (typeof error === 'object' && error !== null && 'message' in error) {
+    // Log error-like objects (e.g., service errors with details)
+    logError(error, 'formatError');
+  }
+  // Don't log plain strings - they're already user-friendly messages
+  
   return message;
 }
 

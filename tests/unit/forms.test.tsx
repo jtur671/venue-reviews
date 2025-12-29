@@ -134,6 +134,75 @@ describe('Form Components', () => {
       expect(mockOnSubmitted).toHaveBeenCalled();
     });
 
+    it('handles duplicate review error with existing review data', async () => {
+      const existingReview = {
+        id: 'existing-review-123',
+        reviewer: 'Existing Reviewer',
+        comment: 'Existing comment',
+        score: 9,
+        sound_score: 8,
+        vibe_score: 9,
+        staff_score: 9,
+        layout_score: 9,
+        created_at: '2024-01-01T00:00:00Z',
+        reviewer_name: 'Existing Reviewer',
+        user_id: 'user-123',
+        reviewer_role: 'fan' as const,
+      };
+
+      // Mock duplicate error but with existing review data
+      (createReview as any).mockResolvedValue({
+        data: existingReview,
+        error: {
+          message: "You've already left a report card for this venue from this browser.",
+          code: '23505',
+          isDuplicate: true,
+        },
+      });
+
+      render(<ReviewForm {...defaultProps} />);
+
+      const form = document.querySelector('form');
+      if (form) {
+        fireEvent.submit(form);
+      }
+
+      await waitFor(() => {
+        expect(createReview).toHaveBeenCalled();
+      });
+
+      // Should still call onSubmitted to refresh UI with existing review
+      expect(mockOnSubmitted).toHaveBeenCalled();
+      
+      // Should not show error since we got the existing review
+      await waitFor(() => {
+        const errorElement = document.querySelector('.form-error');
+        expect(errorElement).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows error when review creation fails with no data', async () => {
+      (createReview as any).mockResolvedValue({
+        data: null,
+        error: { message: 'Failed to create review' },
+      });
+
+      render(<ReviewForm {...defaultProps} />);
+
+      const form = document.querySelector('form');
+      if (form) {
+        fireEvent.submit(form);
+      }
+
+      await waitFor(() => {
+        expect(createReview).toHaveBeenCalled();
+        const errorElement = document.querySelector('.form-error');
+        expect(errorElement).toBeInTheDocument();
+      });
+
+      expect(mockOnSubmitted).not.toHaveBeenCalled();
+    });
+
     it('updates review when form is submitted with existing review', async () => {
       const existingReview = {
         id: 'review-123',

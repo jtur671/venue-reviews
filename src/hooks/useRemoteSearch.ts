@@ -33,9 +33,18 @@ export function useRemoteSearch(search: string, selectedCity: string) {
 
         const res = await fetch(`/api/search-venues?${params.toString()}`);
         if (!res.ok) {
-          const text = await res.text();
-          console.error('Search API error:', res.status, text);
-          setRemoteError('There was a problem searching venues.');
+          let errorMessage = 'There was a problem searching venues.';
+          try {
+            const errorJson = await res.json();
+            errorMessage = errorJson.error || errorMessage;
+            if (process.env.NODE_ENV === 'development' && errorJson.details) {
+              console.error('Search API error:', res.status, errorJson.details);
+            }
+          } catch {
+            const text = await res.text();
+            console.error('Search API error:', res.status, text);
+          }
+          setRemoteError(errorMessage);
           setRemoteResults([]);
         } else {
           const json = await res.json();

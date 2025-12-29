@@ -119,6 +119,12 @@ export async function createReview(input: CreateReviewInput): Promise<{
       });
 
       if (result.error) {
+        // If it's a duplicate error but we have data (existing review), return it
+        if (result.error.isDuplicate && result.data) {
+          console.log('Duplicate review detected, but existing review found:', result.data.id, 'user_id:', result.data.user_id);
+          return { data: result.data, error: null };
+        }
+        
         return {
           data: null,
           error: {

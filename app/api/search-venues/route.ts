@@ -66,38 +66,20 @@ export async function GET(req: NextRequest) {
   let effectiveQuery = '';
   const searchTerms = q.toLowerCase().split(/\s+/).filter(term => term.length > 0);
   
-  // Common city name patterns (multi-word cities)
-  const commonCityPatterns = [
-    'new orleans', 'new york', 'new jersey', 'new mexico', 'new hampshire',
-    'key west', 'key largo', 'west palm', 'palm beach', 'palm springs',
-    'san francisco', 'san diego', 'san antonio', 'san jose', 'san mateo',
-    'los angeles', 'las vegas', 'las cruces',
-    'kansas city', 'oakland city', 'salt lake', 'lake tahoe',
-    'st louis', 'st paul', 'st petersburg', 'st augustine',
-    'fort worth', 'fort lauderdale', 'fort myers',
-    'virginia beach', 'myrtle beach', 'daytona beach',
-    'colorado springs', 'rapid city', 'sioux falls',
-  ];
-  
   // Common venue name keywords - if present, treat as venue search
-  const venueKeywords = ['ballroom', 'hall', 'club', 'theater', 'theatre', 'venue', 'bar', 'lounge', 'tavern', 'pub'];
+  const venueKeywords = ['ballroom', 'hall', 'club', 'theater', 'theatre', 'venue', 'bar', 'lounge', 'tavern', 'pub', 'center', 'centre', 'music'];
   const hasVenueKeywords = venueKeywords.some(keyword => q.toLowerCase().includes(keyword));
   
-  // Check if query matches a known city pattern exactly
-  const matchesCityPattern = commonCityPatterns.some(pattern => 
-    q.toLowerCase() === pattern
-  );
-  
   // Determine if this is likely a city search
-  // Must match a city pattern AND not have venue keywords
-  const isLikelyCitySearch = matchesCityPattern && !hasVenueKeywords;
+  // Multi-word queries without venue keywords are likely city searches
+  // Single words are treated as venue name searches to avoid false positives
+  const wordCount = searchTerms.length;
+  const isLikelyCitySearch = wordCount >= 2 && !hasVenueKeywords;
 
   if (q && cityParam) {
     // User typed a venue + picked a city
     effectiveQuery = `${q} in ${cityParam}`;
   } else if (q && !cityParam) {
-    const wordCount = searchTerms.length;
-
     if (wordCount === 1) {
       // Single word: search as venue name (not city) to avoid irrelevant results
       // This prevents "key" from matching venues in random cities
@@ -106,7 +88,7 @@ export async function GET(req: NextRequest) {
       // Multi-word that looks like a city: search for venues in that city
       effectiveQuery = `live music venues in ${q}`;
     } else {
-      // Multi-word: treat as venue name
+      // Multi-word with venue keywords: treat as venue name
       effectiveQuery = q;
     }
   } else if (!q && cityParam) {
@@ -120,7 +102,10 @@ export async function GET(req: NextRequest) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {
     console.error('Missing GOOGLE_PLACES_API_KEY env var');
-    return new NextResponse('Missing GOOGLE_PLACES_API_KEY', { status: 500 });
+    return NextResponse.json(
+      { error: 'Search service not configured', results: [] },
+      { status: 500 }
+    );
   }
 
   const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
@@ -136,14 +121,29 @@ export async function GET(req: NextRequest) {
 
     if (!resp.ok) {
       console.error('Google Places HTTP error:', resp.status, text);
-      return new NextResponse('Upstream error', { status: 502 });
+      return NextResponse.json(
+        { error: 'Upstream error', details: process.env.NODE_ENV === 'development' ? text.slice(0, 200) : undefined },
+        { status: 502 }
+      );
     }
 
-    const json = JSON.parse(text);
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (parseErr) {
+      console.error('Failed to parse Google Places response:', parseErr, 'Response text:', text.slice(0, 200));
+      return NextResponse.json(
+        { error: 'Invalid response from search service', details: process.env.NODE_ENV === 'development' ? 'Failed to parse JSON' : undefined },
+        { status: 502 }
+      );
+    }
 
     if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
       console.error('Google Places API status:', json.status, json.error_message);
-      return new NextResponse('Places API error', { status: 502 });
+      return NextResponse.json(
+        { error: 'Places API error', details: process.env.NODE_ENV === 'development' ? json.error_message : undefined },
+        { status: 502 }
+      );
     }
 
     const rawResults: GooglePlace[] = json.results ?? [];
@@ -234,10 +234,21 @@ export async function GET(req: NextRequest) {
           
           return cityContainsAllWords || addressContainsAllWords || queryMatchesCity || nameContainsAllWords;
         } else {
-          // For venue name searches, all search words must appear in the result
-          // This ensures "key" only matches venues with "key" in name/city/address
-          // and "key west" only matches venues with both "key" and "west"
-          return searchTerms.every(word => resultText.includes(word));
+          // For venue name searches, check if:
+          // 1. The full query phrase appears anywhere (most lenient)
+          // 2. OR all individual words appear (stricter, but still allows word order flexibility)
+          // 3. OR if query matches the city name (treat as city search)
+          const fullPhraseMatch = resultText.includes(queryLower);
+          const allWordsMatch = searchTerms.every(word => resultText.includes(word));
+          const cityMatch = resultCity && (
+            resultCity === queryLower ||
+            resultCity.includes(queryLower) ||
+            queryLower.includes(resultCity) ||
+            // Check if all search terms are in the city name
+            searchTerms.every(word => resultCity.includes(word))
+          );
+          
+          return fullPhraseMatch || allWordsMatch || cityMatch;
         }
       });
     }
@@ -245,6 +256,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: finalResults });
   } catch (err) {
     console.error('Google Places fetch failed:', err);
-    return new NextResponse('Search error', { status: 500 });
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json(
+      { error: 'Search failed', details: process.env.NODE_ENV === 'development' ? errorMessage : undefined },
+      { status: 500 }
+    );
   }
 }

@@ -133,7 +133,12 @@ export function ReviewForm({
       const { data, error } = await createReview(createData);
       console.log('Review creation response - data:', data?.id, 'user_id in response:', data?.user_id, 'error:', error);
 
-      if (error) {
+      // If we got a duplicate error but also got the existing review data, treat it as success
+      if (error?.isDuplicate && data) {
+        console.log('Duplicate review detected, but existing review returned. Refreshing UI...');
+        // Don't set error - the existing review was found and returned
+        // The form will be updated via onSubmitted callback
+      } else if (error) {
         setError(formatError(error, 'Could not save your review. Please try again.'));
         setSubmitting(false);
         return;

@@ -64,11 +64,30 @@ export default function HomePage() {
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(
-        (v) =>
-          v.name.toLowerCase().includes(q) ||
-          v.city.toLowerCase().includes(q)
-      );
+      const searchWords = q.split(/\s+/).filter(w => w.length > 0);
+      
+      // Venue keywords that indicate this is a venue name search, not a city
+      const venueKeywords = ['ballroom', 'hall', 'club', 'theater', 'theatre', 'venue', 'bar', 'lounge', 'tavern', 'pub', 'center', 'centre', 'music'];
+      const hasVenueKeywords = venueKeywords.some(keyword => q.includes(keyword));
+      
+      // Multi-word searches without venue keywords are likely city searches
+      const isLikelyCitySearch = searchWords.length >= 2 && !hasVenueKeywords;
+      
+      if (isLikelyCitySearch) {
+        // For city searches, show all venues where the city name contains all search words
+        list = list.filter((v) => {
+          const cityLower = v.city.toLowerCase();
+          // Check if all search words are in the city name
+          return searchWords.every(word => cityLower.includes(word));
+        });
+      } else {
+        // For venue name searches, check name or city
+        list = list.filter(
+          (v) =>
+            v.name.toLowerCase().includes(q) ||
+            v.city.toLowerCase().includes(q)
+        );
+      }
     }
 
     // sort
@@ -126,6 +145,12 @@ export default function HomePage() {
     setSearch('');
     setSelectedCity(city);
     // Clear any draft venue when selecting a city
+    setDraftVenue(null);
+  }
+
+  function handleClear() {
+    setSearch('');
+    setSelectedCity('All');
     setDraftVenue(null);
   }
 
@@ -580,10 +605,9 @@ export default function HomePage() {
         onCityChange={setSelectedCity}
         search={search}
         onSearchChange={setSearch}
-                popularCityStats={popularCityStats}
-                onPopularCityClick={handleExampleCity}
-                searchDisabled={selectedCity !== 'All'}
-              />
+        onClear={handleClear}
+        searchDisabled={selectedCity !== 'All'}
+      />
             </div>
 
             <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>

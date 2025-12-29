@@ -8,8 +8,7 @@ type VenueFiltersProps = {
   onCityChange: (city: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
-  popularCityStats?: Array<{ city: string; reviewCount: number }>;
-  onPopularCityClick?: (city: string) => void;
+  onClear?: () => void;
   searchDisabled?: boolean;
 };
 
@@ -19,8 +18,7 @@ export function VenueFilters({
   onCityChange,
   search,
   onSearchChange,
-  popularCityStats,
-  onPopularCityClick,
+  onClear,
   searchDisabled = false,
 }: VenueFiltersProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -108,10 +106,16 @@ export function VenueFilters({
           <div className="chip-row" style={{ marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <button
               type="button"
-              onClick={() => onCityChange('All')}
-              className={'chip ' + (selectedCity === 'All' ? 'chip--active' : '')}
+              onClick={() => {
+                if (onClear) {
+                  onClear();
+                } else {
+                  onCityChange('All');
+                }
+              }}
+              className={'chip ' + (selectedCity === 'All' && !search.trim() ? 'chip--active' : '')}
             >
-              None
+              Clear
             </button>
             {cities.map((city) => (
               <button
@@ -127,27 +131,6 @@ export function VenueFilters({
         </>
       )}
 
-      {popularCityStats && popularCityStats.length > 0 && onPopularCityClick && (
-        <div className="section" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
-          <div className="section-header" style={{ marginBottom: '0.4rem' }}>
-            <h3 className="section-title" style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-              Popular cities
-            </h3>
-          </div>
-          <div className="chip-row" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-            {popularCityStats.map((c) => (
-              <button
-                key={c.city}
-                type="button"
-                className="chip"
-                onClick={() => onPopularCityClick(c.city)}
-              >
-                {c.city}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

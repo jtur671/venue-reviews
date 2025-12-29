@@ -71,6 +71,20 @@ export async function fetchFromApi<T>(
     }
 
     if (!res.ok) {
+      // For duplicate errors, check if the response includes the existing review data
+      const isDuplicate = resBody?.isDuplicate || res.status === 409;
+      if (isDuplicate && resBody?.data) {
+        // Return the existing review data even though it's technically an "error" response
+        return {
+          data: resBody.data,
+          error: { 
+            message: resBody?.error || errorMessage,
+            code: resBody?.code,
+            isDuplicate: true,
+          },
+        };
+      }
+      
       return {
         data: null,
         error: { 

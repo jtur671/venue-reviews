@@ -78,15 +78,44 @@ describe('POST /api/reviews', () => {
     expect(data.data.reviewer_role).toBe('artist');
   });
 
-  it('returns 409 for duplicate review (user already reviewed venue)', async () => {
+  it('returns 409 for duplicate review and fetches existing review', async () => {
     const { getSupabaseConfigError } = await import('@/lib/supabaseClient');
     (getSupabaseConfigError as any).mockReturnValue(null);
 
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 409,
-      text: async () => 'UNIQUE violation 23505 duplicate key',
-    });
+    const existingReview = {
+      id: 'existing-review-123',
+      venue_id: validReviewInput.venue_id,
+      user_id: validReviewInput.user_id,
+      reviewer_name: 'Existing Reviewer',
+      comment: 'Existing comment',
+      score: 9,
+      sound_score: 8,
+      vibe_score: 9,
+      staff_score: 9,
+      layout_score: 9,
+      created_at: '2024-01-01T00:00:00Z',
+      reviewer_role: 'fan',
+    };
+
+    // First call: profile creation (ok)
+    // Second call: review insert (fails with duplicate)
+    // Third call: fetch existing review (succeeds)
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        text: async () => 'UNIQUE violation 23505 duplicate key',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [existingReview],
+      });
 
     const { POST } = await import('../../app/api/reviews/route');
     
@@ -102,6 +131,53 @@ describe('POST /api/reviews', () => {
     expect(data.isDuplicate).toBe(true);
     expect(data.code).toBe('23505');
     expect(data.error).toContain('already left a report card');
+    // Should include the existing review data
+    expect(data.data).toBeDefined();
+    expect(data.data.id).toBe('existing-review-123');
+    expect(data.data.reviewer).toBe('Existing Reviewer');
+    expect(data.data.user_id).toBe(validReviewInput.user_id);
+  });
+
+  it('returns 409 for duplicate review even if fetch fails', async () => {
+    const { getSupabaseConfigError } = await import('@/lib/supabaseClient');
+    (getSupabaseConfigError as any).mockReturnValue(null);
+
+    // First call: profile creation (ok)
+    // Second call: review insert (fails with duplicate)
+    // Third call: fetch existing review (fails)
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        text: async () => 'UNIQUE violation 23505 duplicate key',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => 'Internal server error',
+      });
+
+    const { POST } = await import('../../app/api/reviews/route');
+    
+    const request = new NextRequest('http://localhost/api/reviews', {
+      method: 'POST',
+      body: JSON.stringify(validReviewInput),
+    });
+    
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.isDuplicate).toBe(true);
+    expect(data.code).toBe('23505');
+    expect(data.error).toContain('already left a report card');
+    // Should still return error even if fetch fails
+    expect(data.data).toBeUndefined();
   });
 
   it('returns 400 for missing venue_id', async () => {
