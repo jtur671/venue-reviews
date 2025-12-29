@@ -11,6 +11,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { __setForceApiRouteForTests } from '@/lib/services/fetchHelpers';
 import { getAllVenues, getVenueById } from '@/lib/services/venueService';
 import { getReviewsByVenueId } from '@/lib/services/reviewService';
+import { buildVenueSlug } from '@/lib/utils/slug';
 
 // Mock Supabase client to ensure we're NOT using it in browser path
 vi.mock('@/lib/supabaseClient', () => ({
@@ -99,6 +100,31 @@ describe('Service Browser Path (API Routes)', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/venues/venue-123', { method: 'GET' });
       expect(result.error).toBeNull();
       expect(result.data).toEqual(mockVenue);
+    });
+
+    it('strips human-friendly slug before calling API', async () => {
+      const mockVenue = {
+        id: 'venue-123',
+        name: 'Test Venue',
+        city: 'Test City',
+        country: 'USA',
+        address: '123 Main St',
+      };
+
+      const slug = buildVenueSlug({
+        id: mockVenue.id,
+        name: mockVenue.name,
+        city: mockVenue.city,
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: mockVenue }),
+      });
+
+      await getVenueById(slug);
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/venues/venue-123', { method: 'GET' });
     });
 
     it('handles venue not found', async () => {

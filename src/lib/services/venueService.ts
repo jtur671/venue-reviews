@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { mapSupabaseVenues } from '@/lib/mapSupabaseVenues';
 import { VenueWithStats } from '@/types/venues';
 import { __shouldUseApiRouteInternal, fetchFromApi } from './fetchHelpers';
+import { extractVenueId } from '@/lib/utils/slug';
 
 export type Venue = {
   id: string;
@@ -84,10 +85,12 @@ export async function getVenueById(id: string): Promise<{
   data: Venue | null;
   error: VenueServiceError | null;
 }> {
+  const resolvedId = extractVenueId(id);
+
   try {
     // Browser → API route (no auth issues)
     if (__shouldUseApiRouteInternal()) {
-      return fetchFromApi<Venue>(`/api/venues/${id}`, {
+      return fetchFromApi<Venue>(`/api/venues/${resolvedId}`, {
         errorMessage: 'Failed to load venue',
       });
     }
@@ -96,7 +99,7 @@ export async function getVenueById(id: string): Promise<{
     const { data, error } = await supabase
       .from('venues')
       .select('id, name, city, country, address, photo_url, google_place_id')
-      .eq('id', id)
+      .eq('id', resolvedId)
       .single();
 
     if (error) {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createVenue } from '@/lib/services/venueService';
 import { DraftVenue } from '@/types/venues';
 import { ERROR_COLOR } from '@/constants/ui';
+import { buildVenuePath } from '@/lib/utils/slug';
 
 type AddVenueFormProps = {
   onAdded: () => void;
@@ -81,7 +82,7 @@ export function AddVenueForm({ onAdded, draftVenue }: AddVenueFormProps) {
         });
       }
       
-      router.push(`/venues/${data.id}`);
+      router.push(buildVenuePath({ id: data.id, name: newName, city: newCity }));
       return;
     }
 

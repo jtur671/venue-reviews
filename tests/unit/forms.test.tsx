@@ -37,6 +37,7 @@ import { createReview, updateReview, deleteReview } from '@/lib/services/reviewS
 import { createVenue } from '@/lib/services/venueService';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { buildVenuePath } from '@/lib/utils/slug';
 
 // Mock scrollIntoView
 Object.defineProperty(Element.prototype, 'scrollIntoView', {
@@ -340,7 +341,9 @@ describe('Form Components', () => {
         });
       });
 
-      expect(mockPush).toHaveBeenCalledWith('/venues/new-venue-id');
+      expect(mockPush).toHaveBeenCalledWith(
+        buildVenuePath({ id: 'new-venue-id', name: 'Test Venue', city: 'Test City' })
+      );
     });
 
     it('shows error when name or city is missing', async () => {

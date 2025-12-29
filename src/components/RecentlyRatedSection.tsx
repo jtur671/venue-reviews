@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { EmptyState } from './EmptyState';
 import { VenueWithStats } from '@/types/venues';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
+import { buildVenuePath } from '@/lib/utils/slug';
 
 type RecentlyRatedSectionProps = {
   venues: VenueWithStats[];
@@ -25,7 +26,7 @@ export const RecentlyRatedSection = memo(function RecentlyRatedSection({ venues 
               return (
                 <li key={v.id} className="recently-card-item">
                   <Link 
-                    href={`/venues/${v.id}`} 
+                    href={buildVenuePath(v)} 
                     className="recently-card card-padding-sm"
                     aria-label={`${v.name} in ${v.city}, ${grade ? `grade ${grade}` : 'no rating yet'}`}
                   >

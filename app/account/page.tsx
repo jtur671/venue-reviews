@@ -8,6 +8,7 @@ import { BackButton } from '@/components/BackButton';
 import { RoleChoiceModal } from '@/components/RoleChoiceModal';
 import { DeleteAccountModal } from '@/components/DeleteAccountModal';
 import { userCache } from '@/lib/cache/userCache';
+import { buildVenuePath } from '@/lib/utils/slug';
 
 type UserRole = 'artist' | 'fan';
 
@@ -566,7 +567,7 @@ export default function AccountPage() {
                         </span>
                       )}
                       <Link
-                        href={`/venues/${venue.id}`}
+                        href={buildVenuePath({ id: venue.id, name: venue.name, city: venue.city ?? undefined })}
                         className="btn btn--ghost"
                         style={{ marginTop: '0.25rem', fontSize: '0.8rem' }}
                       >

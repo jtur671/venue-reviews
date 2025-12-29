@@ -4,6 +4,7 @@ import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
 import { VenueWithStats } from '@/types/venues';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
+import { buildVenuePath } from '@/lib/utils/slug';
 
 type VenueListProps = {
   venues: VenueWithStats[];
@@ -38,7 +39,7 @@ export const VenueList = memo(function VenueList({ venues, loading, label }: Ven
           return (
             <li key={v.id} className="venue-list-item">
               <Link 
-                href={`/venues/${v.id}`} 
+                href={buildVenuePath(v)} 
                 className="card venue-card"
                 aria-label={`${v.name} in ${v.city}, ${grade ? `grade ${grade}` : 'no rating yet'}`}
               >

@@ -15,6 +15,7 @@ import { useRemoteSearch } from '@/hooks/useRemoteSearch';
 import { createVenue } from '@/lib/services/venueService';
 import { scoreToGrade } from '@/lib/utils/grades';
 import { venuesCache } from '@/lib/cache/venuesCache';
+import { buildVenuePath } from '@/lib/utils/slug';
 
 type SortBy = 'top-rated' | 'most-reviewed' | 'name';
 
@@ -249,7 +250,7 @@ export default function HomePage() {
         // Small delay to ensure database is ready and cache is refreshed, then navigate
         setTimeout(() => {
           try {
-            router.push(`/venues/${data.id}`);
+            router.push(buildVenuePath({ id: data.id, name: v.name, city: v.city }));
           } catch (navErr) {
             console.error('Navigation failed:', navErr);
             setCreatingVenue(false);
@@ -405,7 +406,7 @@ export default function HomePage() {
                   return (
                     <Link
                       key={v.id}
-                      href={`/venues/${v.id}`}
+                        href={buildVenuePath(v)}
                       className="relative flex-shrink-0 w-[85vw] max-w-[420px] md:w-auto snap-center rounded-2xl md:rounded-3xl bg-slate-900 text-slate-50 shadow-2xl shadow-slate-900/50 overflow-hidden transform transition-transform hover:scale-[1.02] block"
                     >
                       <div className="relative h-64 md:h-96 bg-slate-800 overflow-hidden">

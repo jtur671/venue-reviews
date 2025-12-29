@@ -16,10 +16,12 @@ import { useProfile } from '@/hooks/useProfile';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
 import { getStoredRole, getAnyStoredRole, FALLBACK_USER_ID, type StoredRole } from '@/lib/roleStorage';
 import { LocalRoleChoiceModal } from '@/components/LocalRoleChoiceModal';
+import { extractVenueId } from '@/lib/utils/slug';
 
 export default function VenuePage() {
   const params = useParams<{ id: string }>();
-  const venueId = params.id as string;
+  const rawVenueParam = params.id as string;
+  const venueId = extractVenueId(rawVenueParam);
   const { user: anonUser, loading: anonLoading } = useAnonUser();
   const { user: currentUser, loading: currentUserLoading } = useCurrentUser();
   const isEmailUser = !!currentUser?.email;

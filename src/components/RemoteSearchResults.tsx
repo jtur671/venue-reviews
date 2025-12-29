@@ -5,6 +5,7 @@ import { ERROR_COLOR, SUCCESS_COLOR_START, SUCCESS_COLOR_END } from '@/constants
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
 import { formatError } from '@/lib/utils/errors';
+import { buildVenuePath } from '@/lib/utils/slug';
 
 type RemoteSearchResultsProps = {
   results: RemoteVenue[];
@@ -62,7 +63,10 @@ export function RemoteSearchResults({
             return (
               <li key={v.id} style={{ marginBottom: '0.5rem' }}>
                 {existingId ? (
-                  <Link href={`/venues/${existingId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <Link
+                    href={buildVenuePath({ id: existingId, name: v.name, city: v.city })}
+                    style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
                     <div className="card venue-card" style={{ cursor: 'pointer' }}>
                       <div className="venue-card-main">
                         <div className="venue-name">{v.name}</div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseConfigError } from '@/lib/supabaseClient';
+import { extractVenueId } from '@/lib/utils/slug';
 
 export const runtime = 'nodejs';
 
@@ -11,7 +12,20 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = extractVenueId(rawId);
+
+  if (!id) {
+    return json(
+      { error: 'Venue id is required' },
+      {
+        status: 400,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
+  }
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
