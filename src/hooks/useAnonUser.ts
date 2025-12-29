@@ -28,9 +28,9 @@ async function ensureAnonUserSingleton(): Promise<AnonUser> {
 
   pendingEnsure = (async () => {
     try {
-      // 1) Try existing session first (short timeout).
+      // 1) Try existing session first (longer timeout for production).
       try {
-        const { data } = await withTimeout(supabase.auth.getUser(), 8_000, 'supabase.auth.getUser()');
+        const { data } = await withTimeout(supabase.auth.getUser(), 20_000, 'supabase.auth.getUser()');
         if (data.user) {
           cachedAnonUser = { id: data.user.id };
           return cachedAnonUser;
@@ -41,14 +41,14 @@ async function ensureAnonUserSingleton(): Promise<AnonUser> {
       }
 
       // 2) Create an anonymous session, with retries/backoff to avoid rare flakes.
-      const delaysMs = [0, 500, 1500];
+      const delaysMs = [0, 500, 1500, 3000];
       for (let attempt = 0; attempt < delaysMs.length; attempt++) {
         if (attempt > 0) await sleep(delaysMs[attempt]);
 
         try {
           const { data: anonData, error } = await withTimeout(
             supabase.auth.signInAnonymously(),
-            15_000,
+            30_000, // Increased timeout for production
             'supabase.auth.signInAnonymously()'
           );
 
@@ -66,7 +66,7 @@ async function ensureAnonUserSingleton(): Promise<AnonUser> {
 
         // Sometimes the session is established even if the call path is flaky; re-check.
         try {
-          const { data } = await withTimeout(supabase.auth.getUser(), 8_000, 'supabase.auth.getUser() after anon sign-in');
+          const { data } = await withTimeout(supabase.auth.getUser(), 20_000, 'supabase.auth.getUser() after anon sign-in');
           if (data.user) {
             cachedAnonUser = { id: data.user.id };
             return cachedAnonUser;

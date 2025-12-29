@@ -158,8 +158,15 @@ export default function HomePage() {
     // Immediately create the venue and navigate to its review page
     setCreatingVenue(true);
     
+    // Set a safety timeout to reset creating state if something hangs
+    let safetyTimeout: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      console.warn('Venue creation taking too long, resetting state');
+      setCreatingVenue(false);
+    }, 35_000); // 35 seconds
+    
     try {
-      const { data, error } = await createVenue({
+      // Add timeout wrapper to prevent hanging
+      const createVenuePromise = createVenue({
         name: v.name,
         city: v.city,
         country: v.country || 'USA',
@@ -168,8 +175,20 @@ export default function HomePage() {
         google_place_id: v.googlePlaceId || null,
       });
 
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+        setTimeout(() => {
+          resolve({ data: null, error: { message: 'Venue creation timed out. Please try again.' } });
+        }, 30_000); // 30 second timeout
+      });
+
+      const { data, error } = await Promise.race([createVenuePromise, timeoutPromise]);
+
       if (error) {
         console.error('Error creating venue:', error);
+        if (safetyTimeout) {
+          clearTimeout(safetyTimeout);
+          safetyTimeout = null;
+        }
         // Fallback to old behavior if creation fails
         setDraftVenue({
           name: v.name,
@@ -244,6 +263,10 @@ export default function HomePage() {
       setCreatingVenue(false);
     } catch (err) {
       console.error('Unexpected error creating venue:', err);
+      if (safetyTimeout) {
+        clearTimeout(safetyTimeout);
+        safetyTimeout = null;
+      }
       // Fallback to draft venue on unexpected errors
       setDraftVenue({
         name: v.name,
