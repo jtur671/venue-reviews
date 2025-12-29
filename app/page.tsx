@@ -171,15 +171,15 @@ export default function HomePage() {
       if (error) {
         console.error('Error creating venue:', error);
         // Fallback to old behavior if creation fails
-    setDraftVenue({
-      name: v.name,
-      city: v.city,
-      country: v.country,
-      address: v.address,
+        setDraftVenue({
+          name: v.name,
+          city: v.city,
+          country: v.country,
+          address: v.address,
           photoUrl: v.photoUrl,
           googlePlaceId: v.googlePlaceId,
-    });
-    addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+        addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
         setCreatingVenue(false);
         return;
       }
@@ -220,14 +220,40 @@ export default function HomePage() {
         
         // Small delay to ensure database is ready, then navigate
         setTimeout(() => {
-          router.push(`/venues/${data.id}`);
+          try {
+            router.push(`/venues/${data.id}`);
+          } catch (navErr) {
+            console.error('Navigation failed:', navErr);
+            setCreatingVenue(false);
+          }
         }, 100);
         return;
       }
       
+      // If we get here, venue creation succeeded but no ID was returned
+      console.error('Venue creation succeeded but no ID returned');
+      setDraftVenue({
+        name: v.name,
+        city: v.city,
+        country: v.country,
+        address: v.address,
+        photoUrl: v.photoUrl,
+        googlePlaceId: v.googlePlaceId,
+      });
+      addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
       setCreatingVenue(false);
     } catch (err) {
       console.error('Unexpected error creating venue:', err);
+      // Fallback to draft venue on unexpected errors
+      setDraftVenue({
+        name: v.name,
+        city: v.city,
+        country: v.country,
+        address: v.address,
+        photoUrl: v.photoUrl,
+        googlePlaceId: v.googlePlaceId,
+      });
+      addVenueRef.current?.scrollIntoView({ behavior: 'smooth' });
       setCreatingVenue(false);
     }
   }

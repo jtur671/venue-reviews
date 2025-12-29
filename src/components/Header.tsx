@@ -40,6 +40,12 @@ export function Header() {
   // Default to non-blocking UI: show "Sign in" immediately, then upgrade if a session exists.
   const [loading, setLoading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  // Track mounted state to avoid hydration mismatches with localStorage
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -396,8 +402,9 @@ export function Header() {
             </>
           ) : (
             <>
-              {(() => {
+              {mounted && (() => {
                 // Try to get role by userId, fallback ID, or any stored role
+                // Only check localStorage after mount to avoid hydration mismatch
                 const localRole = getStoredRole(anonUser?.id ?? null) 
                   ?? getStoredRole(FALLBACK_USER_ID) 
                   ?? getAnyStoredRole();
