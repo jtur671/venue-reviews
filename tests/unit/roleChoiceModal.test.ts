@@ -60,36 +60,29 @@ describe('RoleChoiceModal Immutability (Mission Critical)', () => {
     await supabase.auth.signOut();
   });
 
-  it('allows setting role when profile role is null', async () => {
+  it('allows setting role when profile does not exist', async () => {
     if (isRateLimited || !testUserId) {
       return; // Skip if rate limited
     }
 
-    // Ensure profile exists with null role
-    const { error: upsertError } = await supabase
+    // Delete profile if it exists (to test creation)
+    await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', testUserId);
+
+    // Try to set role using upsert (same logic as RoleChoiceModal)
+    // The DB enforces profiles.role NOT NULL, so "no role yet" means "no profile row yet"
+    const { data, error } = await supabase
       .from('profiles')
       .upsert({
         id: testUserId,
         display_name: 'Test User',
-        role: null,
-      });
-
-    if (upsertError && upsertError.code !== '23505') {
-      throw new Error(`Failed to create profile: ${upsertError.message}`);
-    }
-
-    // Reset role to null if it was set
-    await supabase
-      .from('profiles')
-      .update({ role: null })
-      .eq('id', testUserId);
-
-    // Try to set role using the immutability-safe update (same logic as RoleChoiceModal)
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ role: 'artist' })
-      .eq('id', testUserId)
-      .is('role', null) // Only update if role is null (immutability constraint)
+        role: 'artist',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false, // We want to create it
+      })
       .select('role')
       .single();
 
@@ -112,11 +105,21 @@ describe('RoleChoiceModal Immutability (Mission Critical)', () => {
       return; // Skip if rate limited
     }
 
-    // Set role to 'artist' first
-    await supabase
+    // Set role to 'artist' first using upsert
+    const { error: upsertError } = await supabase
       .from('profiles')
-      .update({ role: 'artist' })
-      .eq('id', testUserId);
+      .upsert({
+        id: testUserId,
+        display_name: 'Test User',
+        role: 'artist',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+      });
+
+    if (upsertError && upsertError.code !== '23505') {
+      throw new Error(`Failed to set initial role: ${upsertError.message}`);
+    }
 
     // Verify role is set
     const { data: beforeUpdate } = await supabase
@@ -127,47 +130,55 @@ describe('RoleChoiceModal Immutability (Mission Critical)', () => {
 
     expect(beforeUpdate?.role).toBe('artist');
 
-    // Try to change role to 'fan' using the immutability-safe update
-    // This should fail because role is not null
-    const { data: updateData, error: updateError } = await supabase
+    // Try to change role to 'fan' using upsert with ignoreDuplicates
+    // This should NOT change the role because ignoreDuplicates prevents overwriting
+    const { error: updateError } = await supabase
       .from('profiles')
-      .update({ role: 'fan' })
-      .eq('id', testUserId)
-      .is('role', null) // Only update if role is null (immutability constraint)
+      .upsert({
+        id: testUserId,
+        display_name: 'Test User',
+        role: 'fan',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: true, // This prevents overwriting existing role
+      });
+
+    // ignoreDuplicates doesn't return data, so we fetch separately (like the actual implementation)
+    const { data: afterUpdateRole } = await supabase
+      .from('profiles')
       .select('role')
+      .eq('id', testUserId)
       .single();
 
-    // Should return null/error because role is not null (immutability enforced)
-    expect(updateData).toBeNull();
-    expect(updateError).toBeTruthy();
+    // Role should still be 'artist', not 'fan'
+    expect(afterUpdateRole?.role).toBe('artist');
 
-    // Verify role is still 'artist' (unchanged)
-    const { data: afterUpdate } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', testUserId)
-      .single();
-
-    expect(afterUpdate?.role).toBe('artist'); // Role should remain unchanged
+    // Verify role is still 'artist' (unchanged) - already verified above
+    expect(afterUpdateRole?.role).toBe('artist'); // Role should remain unchanged
   });
 
-  it('allows setting role to fan when null', async () => {
+  it('allows setting role to fan when profile does not exist', async () => {
     if (isRateLimited || !testUserId) {
       return; // Skip if rate limited
     }
 
-    // Reset role to null
+    // Delete profile to ensure it doesn't exist
     await supabase
       .from('profiles')
-      .update({ role: null })
+      .delete()
       .eq('id', testUserId);
 
-    // Set role to 'fan' using the immutability-safe update
+    // Set role to 'fan' using upsert (same logic as RoleChoiceModal)
     const { data, error } = await supabase
       .from('profiles')
-      .update({ role: 'fan' })
-      .eq('id', testUserId)
-      .is('role', null) // Only update if role is null (immutability constraint)
+      .upsert({
+        id: testUserId,
+        display_name: 'Test User',
+        role: 'fan',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false, // We want to create it
+      })
       .select('role')
       .single();
 
@@ -190,75 +201,93 @@ describe('RoleChoiceModal Immutability (Mission Critical)', () => {
       return; // Skip if rate limited
     }
 
-    // Ensure role is 'fan'
-    await supabase
+    // Ensure role is 'fan' using upsert
+    const { error: initialError } = await supabase
       .from('profiles')
-      .update({ role: 'fan' })
-      .eq('id', testUserId);
+      .upsert({
+        id: testUserId,
+        display_name: 'Test User',
+        role: 'fan',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+      });
 
-    // Try to change to 'artist' - should fail
-    const { data: updateData, error: updateError } = await supabase
+    if (initialError && initialError.code !== '23505') {
+      throw new Error(`Failed to set initial role: ${initialError.message}`);
+    }
+
+    // Try to change to 'artist' using upsert with ignoreDuplicates - should NOT change
+    const { error: updateError } = await supabase
       .from('profiles')
-      .update({ role: 'artist' })
-      .eq('id', testUserId)
-      .is('role', null) // Only update if role is null (immutability constraint)
-      .select('role')
-      .single();
+      .upsert({
+        id: testUserId,
+        display_name: 'Test User',
+        role: 'artist',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: true, // This prevents overwriting existing role
+      });
 
-    expect(updateData).toBeNull();
-    expect(updateError).toBeTruthy();
-
-    // Verify role is still 'fan'
+    // ignoreDuplicates doesn't return data, so we fetch separately (like the actual implementation)
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', testUserId)
       .single();
 
+    // Role should still be 'fan', not 'artist'
     expect(profile?.role).toBe('fan');
   });
 
-  it('verifies that .is("role", null) constraint works correctly', async () => {
+  it('verifies that ignoreDuplicates prevents overwriting existing role', async () => {
     if (isRateLimited || !testUserId) {
       return; // Skip if rate limited
     }
 
-    // Test 1: Update with .is('role', null) when role IS null - should succeed
+    // Delete profile to start fresh
     await supabase
       .from('profiles')
-      .update({ role: null })
+      .delete()
       .eq('id', testUserId);
 
+    // Test 1: Create profile with 'artist' role when it doesn't exist - should succeed
     const { data: data1, error: error1 } = await supabase
       .from('profiles')
-      .update({ role: 'artist' })
-      .eq('id', testUserId)
-      .is('role', null)
+      .upsert({
+        id: testUserId,
+        display_name: 'Test User',
+        role: 'artist',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false, // Create it
+      })
       .select('role')
       .single();
 
     expect(error1).toBeNull();
     expect(data1?.role).toBe('artist');
 
-    // Test 2: Update with .is('role', null) when role IS NOT null - should fail
-    const { data: data2, error: error2 } = await supabase
+    // Test 2: Try to change role using upsert with ignoreDuplicates - should NOT change
+    const { error: error2 } = await supabase
       .from('profiles')
-      .update({ role: 'fan' })
-      .eq('id', testUserId)
-      .is('role', null) // This should prevent update since role is 'artist'
-      .select('role')
-      .single();
+      .upsert({
+        id: testUserId,
+        display_name: 'Test User',
+        role: 'fan',
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: true, // This prevents overwriting
+      });
 
-    expect(data2).toBeNull();
-    expect(error2).toBeTruthy();
-
-    // Verify role is still 'artist'
+    // ignoreDuplicates doesn't return data, so we fetch separately (like the actual implementation)
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', testUserId)
       .single();
 
+    // Role should still be 'artist', not 'fan'
     expect(profile?.role).toBe('artist');
   });
 });

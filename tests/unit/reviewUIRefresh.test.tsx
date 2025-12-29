@@ -288,7 +288,10 @@ describe('Review UI Refresh', () => {
         expect(result.current.error).toBeDefined();
       });
 
-      expect(result.current.error).toBeTruthy();
+      // Error should be set when refetch fails
+      await waitFor(() => {
+        expect(result.current.error).toBeTruthy();
+      }, { timeout: 1000 });
       if (result.current.error) {
         expect(result.current.error).toContain('Failed to load reviews');
       }

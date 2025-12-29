@@ -20,6 +20,30 @@ describe('Account Page Review Loading (Mission Critical)', () => {
   let testReviewIds: string[] = [];
   let isRateLimited = false;
 
+  // Helper function to ensure profile exists
+  async function ensureProfile() {
+    if (!testUserId) return;
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', testUserId)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: testUserId,
+          display_name: 'Test User',
+          role: 'fan',
+        });
+
+      if (profileError && profileError.code !== '23505') {
+        throw new Error(`Failed to create profile: ${profileError.message}`);
+      }
+    }
+  }
+
   beforeAll(async () => {
     // Create a single anonymous user session for all tests to avoid rate limits
     const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
@@ -32,6 +56,8 @@ describe('Account Page Review Loading (Mission Critical)', () => {
       throw new Error(`Failed to create test user: ${authError?.message}`);
     }
     testUserId = authData.user.id;
+    // Ensure profile exists for all tests
+    await ensureProfile();
   });
 
   beforeEach(() => {
@@ -76,6 +102,9 @@ describe('Account Page Review Loading (Mission Critical)', () => {
     if (isRateLimited || !testUserId) {
       return; // Skip if rate limited
     }
+
+    // Ensure profile exists (required for reviews)
+    await ensureProfile();
 
     // Create a test venue
     const { data: venueData, error: venueError } = await supabase
@@ -316,6 +345,9 @@ describe('Account Page Review Loading (Mission Critical)', () => {
       return; // Skip if rate limited
     }
 
+    // Ensure profile exists (required for reviews)
+    await ensureProfile();
+
     // Create a test venue
     const { data: venueData, error: venueError } = await supabase
       .from('venues')
@@ -515,6 +547,9 @@ describe('Account Page Review Loading (Mission Critical)', () => {
     if (isRateLimited || !testUserId) {
       return; // Skip if rate limited
     }
+
+    // Ensure profile exists (required for reviews)
+    await ensureProfile();
 
     // Create a test venue
     const { data: venueData, error: venueError } = await supabase

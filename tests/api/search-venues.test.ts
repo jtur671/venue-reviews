@@ -261,8 +261,8 @@ describe('Search Venues API', () => {
     const response = await GET(req);
 
     expect(response.status).toBe(500);
-    const text = await response.text();
-    expect(text).toBe('Missing GOOGLE_PLACES_API_KEY');
+    const data = await response.json();
+    expect(data.error).toBe('Search service not configured');
   });
 
   it('handles empty formatted_address gracefully', async () => {

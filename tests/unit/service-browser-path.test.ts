@@ -138,7 +138,10 @@ describe('Service Browser Path (API Routes)', () => {
 
       const result = await getReviewsByVenueId('venue-123');
 
-      expect(mockFetch).toHaveBeenCalledWith('/api/reviews/by-venue/venue-123', { method: 'GET' });
+      expect(mockFetch).toHaveBeenCalledWith('/api/reviews/by-venue/venue-123', {
+        method: 'GET',
+        headers: { 'cache-control': 'no-cache' },
+      });
       expect(result.error).toBeNull();
       expect(result.data).toEqual(mockReviews);
     });

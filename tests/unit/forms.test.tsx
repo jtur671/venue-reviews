@@ -131,7 +131,10 @@ describe('Form Components', () => {
         expect(createReview).toHaveBeenCalled();
       });
 
-      expect(mockOnSubmitted).toHaveBeenCalled();
+      // ReviewForm calls onSubmitted in a setTimeout, so we need to wait for it
+      await waitFor(() => {
+        expect(mockOnSubmitted).toHaveBeenCalled();
+      }, { timeout: 200 });
     });
 
     it('handles duplicate review error with existing review data', async () => {
@@ -172,7 +175,10 @@ describe('Form Components', () => {
       });
 
       // Should still call onSubmitted to refresh UI with existing review
-      expect(mockOnSubmitted).toHaveBeenCalled();
+      // ReviewForm calls onSubmitted in a setTimeout, so we need to wait for it
+      await waitFor(() => {
+        expect(mockOnSubmitted).toHaveBeenCalled();
+      }, { timeout: 200 });
       
       // Should not show error since we got the existing review
       await waitFor(() => {
@@ -232,7 +238,10 @@ describe('Form Components', () => {
         expect(updateReview).toHaveBeenCalled();
       });
 
-      expect(mockOnSubmitted).toHaveBeenCalled();
+      // ReviewForm calls onSubmitted in a setTimeout, so we need to wait for it
+      await waitFor(() => {
+        expect(mockOnSubmitted).toHaveBeenCalled();
+      }, { timeout: 200 });
     });
 
     it('shows error when currentUserId is null', async () => {

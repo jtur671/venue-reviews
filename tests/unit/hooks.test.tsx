@@ -90,9 +90,10 @@ describe('Custom Hooks', () => {
 
       const { result } = renderHook(() => useAnonUser());
 
+      // Wait for loading to complete (useAnonUser has retry logic with delays)
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
-      });
+      }, { timeout: 5000 });
 
       expect(result.current.user).toBeNull();
     });
