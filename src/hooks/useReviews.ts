@@ -10,7 +10,7 @@ export function useReviews(venueId: string | undefined, viewerUserId: string | n
   const [loading, setLoading] = useState(!cachedReviews && !!venueId);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReviews = useCallback(async () => {
+  const loadReviews = useCallback(async (forceRefresh = false) => {
     if (!venueId) {
       setReviews([]);
       setLoading(false);
@@ -18,26 +18,32 @@ export function useReviews(venueId: string | undefined, viewerUserId: string | n
     }
 
     // Don't wait for user - reviews can load independently
-    // Check cache first
-    const cached = reviewsCache.get(venueId);
-    if (cached) {
-      setReviews(cached);
-      setLoading(false);
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cached = reviewsCache.get(venueId);
+      if (cached) {
+        setReviews(cached);
+        setLoading(false);
+        // Still fetch in background to keep data fresh, but don't block UI
+        // (We'll continue below to do the fetch)
+      }
     }
 
-    // Check if there's already a pending fetch
-    const pending = reviewsCache.getPendingFetch(venueId);
-    if (pending) {
-      try {
-        const freshReviews = await pending;
-        setReviews(freshReviews);
-        setLoading(false);
-        setError(null);
-      } catch {
-        setError('Failed to load reviews');
-        setLoading(false);
+    // Check if there's already a pending fetch (and we're not forcing refresh)
+    if (!forceRefresh) {
+      const pending = reviewsCache.getPendingFetch(venueId);
+      if (pending) {
+        try {
+          const freshReviews = await pending;
+          setReviews(freshReviews);
+          setLoading(false);
+          setError(null);
+        } catch {
+          setError('Failed to load reviews');
+          setLoading(false);
+        }
+        return;
       }
-      return;
     }
 
     // Create fetch promise
@@ -61,12 +67,20 @@ export function useReviews(venueId: string | undefined, viewerUserId: string | n
 
     try {
       const freshReviews = await fetchPromise;
+      console.log('Loaded reviews:', freshReviews.length, 'for venue:', venueId);
       setReviews(freshReviews);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reviews');
-      // Keep cached reviews if available
-      if (!cached) {
+      // Keep cached reviews if available and not forcing refresh
+      if (!forceRefresh) {
+        const cached = reviewsCache.get(venueId);
+        if (cached) {
+          setReviews(cached);
+        } else {
+          setReviews([]);
+        }
+      } else {
         setReviews([]);
       }
     } finally {
@@ -80,8 +94,13 @@ export function useReviews(venueId: string | undefined, viewerUserId: string | n
   }, [venueId, loadReviews]);
 
   const myReview = useMemo(() => {
-    if (!viewerUserId || !reviews.length) return null;
-    return reviews.find((r) => r.user_id === viewerUserId) || null;
+    if (!viewerUserId || !reviews.length) {
+      console.log('No myReview: viewerUserId=', viewerUserId, 'reviews.length=', reviews.length);
+      return null;
+    }
+    const found = reviews.find((r) => r.user_id === viewerUserId) || null;
+    console.log('Finding myReview: viewerUserId=', viewerUserId, 'reviews with user_ids=', reviews.map(r => r.user_id), 'found=', found?.id);
+    return found;
   }, [reviews, viewerUserId]);
 
   const otherReviews = useMemo(() => {
@@ -91,8 +110,10 @@ export function useReviews(venueId: string | undefined, viewerUserId: string | n
 
   const refetch = useCallback(() => {
     if (venueId) {
+      console.log('Refetching reviews for venue:', venueId);
       reviewsCache.invalidate(venueId);
-      loadReviews();
+      // Force a fresh fetch, bypassing cache
+      loadReviews(true);
     }
   }, [venueId, loadReviews]);
 

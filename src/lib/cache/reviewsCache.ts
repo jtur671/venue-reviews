@@ -41,9 +41,11 @@ class ReviewsCache {
 
   /**
    * Invalidate cache for a venue (e.g., after creating/updating a review)
+   * Also clears any pending fetch to ensure fresh data is loaded
    */
   invalidate(venueId: string) {
     this.cache.delete(venueId);
+    this.pendingFetches.delete(venueId);
   }
 
   /**

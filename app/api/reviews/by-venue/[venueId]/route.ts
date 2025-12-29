@@ -38,13 +38,17 @@ export async function GET(
   url.searchParams.set('order', 'created_at.desc');
 
   try {
+    // Check for cache-busting header from client
+    const cacheControl = _request.headers.get('cache-control');
+    const shouldBypassCache = cacheControl === 'no-cache';
+    
     const res = await fetch(url.toString(), {
       headers: {
         apikey: supabaseAnonKey!,
         Authorization: `Bearer ${supabaseAnonKey!}`,
       },
-      // Short cache for reviews since they change frequently
-      next: { revalidate: 10 },
+      // Short cache for reviews since they change frequently, but bypass if requested
+      next: shouldBypassCache ? { revalidate: 0 } : { revalidate: 10 },
     });
 
     if (!res.ok) {
@@ -60,6 +64,8 @@ export async function GET(
     }
 
     const raw = (await res.json()) as unknown[];
+    
+    console.log(`Fetched ${raw?.length || 0} reviews for venue ${venueId}, user_ids:`, (raw || []).map((r: any) => r.user_id));
     
     // Map reviewer_name to reviewer for frontend compatibility
     const mapped = (raw || []).map((r: any) => ({

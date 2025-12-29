@@ -45,6 +45,7 @@ export async function getReviewsByVenueId(venueId: string): Promise<{
     if (__shouldUseApiRouteInternal()) {
       const result = await fetchFromApi<Review[]>(`/api/reviews/by-venue/${venueId}`, {
         errorMessage: 'Failed to load reviews',
+        headers: { 'cache-control': 'no-cache' }, // Bypass Next.js cache when fetching
       });
       return { data: result.data || [], error: result.error };
     }

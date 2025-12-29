@@ -26,6 +26,7 @@ export type ApiOptions = {
   errorMessage?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
+  headers?: Record<string, string>;
 };
 
 type ApiResponse<T> = { data?: T; error?: string; code?: string; isDuplicate?: boolean; success?: boolean };
@@ -39,17 +40,35 @@ export async function fetchFromApi<T>(
   url: string,
   options: ApiOptions = {}
 ): Promise<{ data: T | null; error: { message: string; code?: string; isDuplicate?: boolean } | null }> {
-  const { errorMessage = 'Request failed', method = 'GET', body } = options;
+  const { errorMessage = 'Request failed', method = 'GET', body, headers = {} } = options;
   
   try {
+    const fetchHeaders: HeadersInit = { ...headers };
+    if (body) {
+      fetchHeaders['Content-Type'] = 'application/json';
+    }
+    
     const fetchOptions: RequestInit = {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(fetchHeaders).length > 0 ? fetchHeaders : undefined,
       body: body ? JSON.stringify(body) : undefined,
     };
 
     const res = await fetch(url, fetchOptions);
-    const resBody = (await res.json().catch(() => null)) as ApiResponse<T> | null;
+    let resBody: ApiResponse<T> | null = null;
+    try {
+      resBody = (await res.json()) as ApiResponse<T>;
+    } catch (jsonErr) {
+      // If response is not OK, we'll handle it below
+      // If response is OK but JSON parsing fails, that's an error
+      if (res.ok) {
+        console.error(`Failed to parse JSON response from ${url}:`, jsonErr);
+        return {
+          data: null,
+          error: { message: 'Invalid response from server. Please try again.' },
+        };
+      }
+    }
 
     if (!res.ok) {
       return {
@@ -59,6 +78,15 @@ export async function fetchFromApi<T>(
           code: resBody?.code,
           isDuplicate: resBody?.isDuplicate,
         },
+      };
+    }
+
+    // For POST/PUT requests, we expect data to be present
+    if ((method === 'POST' || method === 'PUT') && !resBody?.data) {
+      console.error(`Success response from ${url} but no data field:`, resBody);
+      return {
+        data: null,
+        error: { message: 'Server response missing data. Please try again.' },
       };
     }
 

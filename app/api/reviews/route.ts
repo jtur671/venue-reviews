@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
       reviewer_role: body.reviewer_role ?? null,
     };
 
+    console.log('Inserting review with user_id:', body.user_id, 'venue_id:', body.venue_id);
     const insertRes = await fetch(insertUrl.toString(), {
       method: 'POST',
       headers: {
@@ -189,8 +190,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rawData = (await insertRes.json()) as unknown[];
+    let rawData: unknown[];
+    try {
+      rawData = (await insertRes.json()) as unknown[];
+    } catch (jsonErr) {
+      console.error('Failed to parse review insert response:', jsonErr);
+      const responseText = await insertRes.text().catch(() => 'Could not read response');
+      console.error('Response text:', responseText);
+      return json(
+        { error: 'Failed to parse server response' },
+        { status: 502, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    if (!Array.isArray(rawData) || rawData.length === 0) {
+      console.error('Review insert returned invalid data:', rawData);
+      return json(
+        { error: 'Server returned invalid response' },
+        { status: 502, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
     const review = rawData[0] as Record<string, unknown>;
+    
+    if (!review || !review.id) {
+      console.error('Review insert response missing required fields:', review);
+      return json(
+        { error: 'Server response missing required data' },
+        { status: 502, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    console.log('Review created successfully - id:', review.id, 'user_id:', review.user_id, 'venue_id:', review.venue_id);
 
     // Map to frontend expected shape
     const mapped = {

@@ -129,10 +129,20 @@ export function ReviewForm({
         reviewer_role: reviewerRole,
       };
 
-      const { error } = await createReview(createData);
+      console.log('Creating review with user_id:', currentUserId, 'venue_id:', venueId);
+      const { data, error } = await createReview(createData);
+      console.log('Review creation response - data:', data?.id, 'user_id in response:', data?.user_id, 'error:', error);
 
       if (error) {
         setError(formatError(error, 'Could not save your review. Please try again.'));
+        setSubmitting(false);
+        return;
+      }
+
+      // If no error but also no data, something went wrong
+      if (!data) {
+        console.error('Review creation returned no error but also no data');
+        setError('Could not save your review. Please try again.');
         setSubmitting(false);
         return;
       }
@@ -147,7 +157,11 @@ export function ReviewForm({
     // Invalidate reviews cache for this venue
     reviewsCache.invalidate(venueId);
     
-    onSubmitted();
+    console.log('Review submitted successfully, calling onSubmitted callback');
+    // Add a small delay to ensure database transaction is committed
+    setTimeout(() => {
+      onSubmitted();
+    }, 100);
   }
 
   async function handleDelete() {
