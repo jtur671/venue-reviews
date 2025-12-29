@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, getSupabaseConfigError } from '@/lib/supabaseClient';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Logo } from '@/components/Logo';
 import { userCache } from '@/lib/cache/userCache';
 import { LoginModal } from '@/components/LoginModal';
 import { getStoredRole, getAnyStoredRole, FALLBACK_USER_ID } from '@/lib/roleStorage';
@@ -259,14 +260,16 @@ export function Header() {
         }}
       >
         <Link href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div>
-            <div className="app-brand">
-              <span className="app-logo-dot" />
-              <span className="app-brand-text">Venue Reviews</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Logo size={40} />
+            <div>
+              <div className="app-brand">
+                <span className="app-brand-text">Venue Reviews</span>
+              </div>
+              <p className="app-tagline">
+                Rotten Tomatoes, but for live music venues.
+              </p>
             </div>
-            <p className="app-tagline">
-              Rotten Tomatoes, but for live music venues.
-            </p>
           </div>
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -334,7 +337,7 @@ export function Header() {
                   {user.displayName || user.name || user.email}
                 </span>
               </Link>
-              {user.role && (
+              {mounted && user.role && (
                 <span
                   style={{
                     display: 'inline-flex',
@@ -367,7 +370,7 @@ export function Header() {
             </>
           ) : user ? (
             <>
-              {user.role && (
+              {mounted && user.role && (
                 <span
                   style={{
                     display: 'inline-flex',

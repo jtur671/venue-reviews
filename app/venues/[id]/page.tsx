@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { ReviewList } from '@/components/ReviewList';
 import { ReviewForm } from '@/components/ReviewForm';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
+import { BackButton } from '@/components/BackButton';
 import { useVenue } from '@/hooks/useVenue';
 import { useReviews } from '@/hooks/useReviews';
 import { useReviewStats } from '@/hooks/useReviewStats';
@@ -78,9 +78,7 @@ export default function VenuePage() {
       )}
 
       <section className="section">
-        <Link href="/" className="back-link">
-          ← Back to venues
-        </Link>
+        <BackButton href="/" label="Back to venues" />
       </section>
 
       {loading && <LoadingState message="Loading venue…" />}

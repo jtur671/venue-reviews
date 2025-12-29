@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { scoreToGrade, gradeColor } from '@/lib/utils/grades';
+import { BackButton } from '@/components/BackButton';
 import { RoleChoiceModal } from '@/components/RoleChoiceModal';
 import { DeleteAccountModal } from '@/components/DeleteAccountModal';
 import { userCache } from '@/lib/cache/userCache';
@@ -342,9 +342,9 @@ export default function AccountPage() {
   return (
     <main className="page-container">
       <section className="section">
-        <Link href="/" className="back-link" style={{ display: 'inline-block', marginBottom: '1rem' }}>
-          ← Back to venues
-        </Link>
+        <div style={{ marginBottom: '1rem' }}>
+          <BackButton href="/" label="Back to venues" />
+        </div>
       </section>
       {profile && (
         <RoleChoiceModal
